@@ -1,8 +1,12 @@
+import logging
 import uuid
+from time import perf_counter
 
 from sqlalchemy import Engine
 
 from app.core.config import Settings, get_settings
+from app.core.errors import BlastShieldError
+from app.core.logging import log_lifecycle
 from app.repositories.analysis_repository import AnalysisRepository
 from app.schemas.analysis import (
     ActionReport,
@@ -16,6 +20,8 @@ from app.services.analysis_pipeline import AnalysisPipeline
 from app.services.risk_engine import calculate_risk
 from app.services.safer_alternative import generate_safer_alternative
 from app.services.sql_parser import parse_sql
+
+logger = logging.getLogger(__name__)
 
 
 class BlastShieldAnalyzer:
@@ -35,6 +41,7 @@ class BlastShieldAnalyzer:
         )
 
     def analyze(self, request: AnalyzeRequest) -> AnalysisResponse:
+        started = perf_counter()
         parsed = parse_sql(request.sql)
         analysis_id = uuid.uuid4()
         self._repository.create_analyzing(
@@ -46,6 +53,12 @@ class BlastShieldAnalyzer:
             target_table=parsed.table,
             source=request.source,
             reason=request.reason,
+        )
+        log_lifecycle(
+            logger,
+            analysis_id=analysis_id,
+            event="analysis_started",
+            status_after="ANALYZING",
         )
 
         try:
@@ -137,7 +150,30 @@ class BlastShieldAnalyzer:
                 risk_level=risk.level,
                 fingerprint=snapshot.fingerprint,
             )
+            measurement_modes = {direct.measurement} | {
+                item.measurement for item in dependencies
+            }
+            log_lifecycle(
+                logger,
+                analysis_id=analysis_id,
+                event="analysis_completed",
+                status_before="ANALYZING",
+                status_after="PENDING_APPROVAL",
+                duration_ms=(perf_counter() - started) * 1_000,
+                measurement_mode="/".join(sorted(measurement_modes)),
+            )
             return response
-        except Exception:
+        except Exception as exc:
             self._repository.mark_failed(analysis_id)
+            log_lifecycle(
+                logger,
+                analysis_id=analysis_id,
+                event="analysis_failed",
+                status_before="ANALYZING",
+                status_after="FAILED",
+                duration_ms=(perf_counter() - started) * 1_000,
+                error_code=(
+                    exc.code if isinstance(exc, BlastShieldError) else "INTERNAL_ERROR"
+                ),
+            )
             raise

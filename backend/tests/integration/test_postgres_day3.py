@@ -1,11 +1,18 @@
 import os
+import uuid
+from concurrent.futures import ThreadPoolExecutor
 
 import pytest
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
 from app.core.config import ExecutionSettings, Settings
-from app.core.errors import ApprovalRequiredError, ExecutionFailedError
+from app.core.errors import (
+    ApprovalRequiredError,
+    ExecutionFailedError,
+    InvalidStateError,
+    NotFoundError,
+)
 from app.repositories.analysis_repository import AnalysisRepository
 from app.schemas.analysis import AnalyzeRequest
 from app.schemas.execution import StaleExecutionResponse
@@ -88,9 +95,70 @@ def test_complete_approval_stale_execution_and_rollback_lifecycle() -> None:
 
     rejected = analyzer.analyze(request)
     repository.reject_pending(rejected.analysis_id, actor="human", reason="No")
+    with pytest.raises(InvalidStateError):
+        repository.approve_pending(rejected.analysis_id)
     with pytest.raises(ApprovalRequiredError):
         coordinator.execute(rejected.analysis_id)
     assert _counts(analysis_engine) == starting_counts
+
+    with pytest.raises(NotFoundError):
+        repository.get(uuid.uuid4())
+
+    direct_stale = analyzer.analyze(request)
+    repository.approve_pending(direct_stale.analysis_id)
+    with execution_engine.begin() as connection:
+        connection.execute(
+            text(
+                "INSERT INTO users "
+                "(id, email, full_name, last_login, created_at) VALUES "
+                "(1001, 'day4-direct-stale@example.test', 'Drift User', "
+                "NOW() - INTERVAL '3 years', NOW())"
+            )
+        )
+    direct_result = coordinator.execute(direct_stale.analysis_id)
+    assert isinstance(direct_result, StaleExecutionResponse)
+    assert _counts(analysis_engine)["users"] == starting_counts["users"] + 1
+    with execution_engine.begin() as connection:
+        connection.execute(text("DELETE FROM users WHERE id = 1001"))
+
+    business_stale = analyzer.analyze(request)
+    repository.approve_pending(business_stale.analysis_id)
+    with execution_engine.begin() as connection:
+        connection.execute(
+            text(
+                "UPDATE subscriptions SET monthly_price = monthly_price + 1 "
+                "WHERE user_id = 2"
+            )
+        )
+    business_result = coordinator.execute(business_stale.analysis_id)
+    assert isinstance(business_result, StaleExecutionResponse)
+    with execution_engine.begin() as connection:
+        connection.execute(
+            text(
+                "UPDATE subscriptions SET monthly_price = monthly_price - 1 "
+                "WHERE user_id = 2"
+            )
+        )
+
+    graph_stale = analyzer.analyze(request)
+    repository.approve_pending(graph_stale.analysis_id)
+    with admin_engine.begin() as connection:
+        connection.execute(
+            text(
+                "CREATE TABLE day4_graph_drift ("
+                "id BIGSERIAL PRIMARY KEY, "
+                "user_id BIGINT REFERENCES users(id) ON DELETE SET NULL)"
+            )
+        )
+        connection.execute(
+            text("GRANT SELECT ON day4_graph_drift TO blastshield_analyzer")
+        )
+    try:
+        graph_result = coordinator.execute(graph_stale.analysis_id)
+        assert isinstance(graph_result, StaleExecutionResponse)
+    finally:
+        with admin_engine.begin() as connection:
+            connection.execute(text("DROP TABLE day4_graph_drift"))
 
     stale = analyzer.analyze(request)
     repository.approve_pending(stale.analysis_id, actor="human", reason="Reviewed")
@@ -115,14 +183,59 @@ def test_complete_approval_stale_execution_and_rollback_lifecycle() -> None:
         AnalyzeRequest(sql="DELETE FROM users WHERE id = -1", source="claim-test")
     )
     repository.approve_pending(claimed.analysis_id)
-    repository.claim_approved_for_execution(claimed.analysis_id)
-    with pytest.raises(ExecutionFailedError):
-        repository.claim_approved_for_execution(claimed.analysis_id)
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        outcomes = list(
+            pool.map(
+                lambda _index: _claim_outcome(repository, claimed.analysis_id),
+                range(2),
+            )
+        )
+    assert sorted(outcomes) == ["CLAIMED", "EXECUTION_FAILED"]
     repository.mark_failed(
         claimed.analysis_id,
         code="TEST_CLEANUP",
         message="Claim concurrency verified.",
     )
+
+    with admin_engine.begin() as connection:
+        connection.execute(
+            text(
+                "CREATE FUNCTION day4_slow_delete() RETURNS trigger "
+                "LANGUAGE plpgsql AS $$ BEGIN PERFORM pg_sleep(1); RETURN OLD; END $$"
+            )
+        )
+        connection.execute(
+            text(
+                "CREATE TRIGGER day4_slow_delete_trigger BEFORE DELETE ON users "
+                "FOR EACH ROW EXECUTE FUNCTION day4_slow_delete()"
+            )
+        )
+    try:
+        timeout_report = analyzer.analyze(
+            AnalyzeRequest(sql="DELETE FROM users WHERE id = 1", source="timeout-test")
+        )
+        repository.approve_pending(timeout_report.analysis_id)
+        timeout_coordinator = ExecutionCoordinator(
+            repository=repository,
+            revalidator=Revalidator(pipeline),
+            executor=Executor(
+                engine=execution_engine,
+                settings=ExecutionSettings(
+                    execution_database_url=EXECUTION_DATABASE_URL,
+                    execution_statement_timeout_ms=25,
+                ),
+            ),
+        )
+        with pytest.raises(ExecutionFailedError):
+            timeout_coordinator.execute(timeout_report.analysis_id)
+        assert repository.get(timeout_report.analysis_id).status == "FAILED"
+        assert _counts(analysis_engine)["users"] == starting_counts["users"]
+    finally:
+        with admin_engine.begin() as connection:
+            connection.execute(
+                text("DROP TRIGGER IF EXISTS day4_slow_delete_trigger ON users")
+            )
+            connection.execute(text("DROP FUNCTION IF EXISTS day4_slow_delete()"))
 
     approved = analyzer.analyze(request)
     repository.approve_pending(approved.analysis_id, actor="human")
@@ -175,3 +288,11 @@ def test_complete_approval_stale_execution_and_rollback_lifecycle() -> None:
 
     for engine in [analysis_engine, app_engine, execution_engine, admin_engine]:
         engine.dispose()
+
+
+def _claim_outcome(repository: AnalysisRepository, analysis_id: uuid.UUID) -> str:
+    try:
+        repository.claim_approved_for_execution(analysis_id)
+        return "CLAIMED"
+    except ExecutionFailedError:
+        return "EXECUTION_FAILED"

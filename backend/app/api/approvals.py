@@ -1,11 +1,14 @@
+import logging
 import uuid
 
 from fastapi import APIRouter
 
 from app.repositories.analysis_repository import AnalysisRepository
 from app.schemas.approval import ApprovalRequest, ApprovalTransitionResponse
+from app.core.logging import log_lifecycle
 
 router = APIRouter(tags=["approvals"])
+logger = logging.getLogger(__name__)
 
 
 @router.post(
@@ -21,6 +24,13 @@ def approve_analysis(
         analysis_id,
         actor=payload.actor,
         reason=payload.reason,
+    )
+    log_lifecycle(
+        logger,
+        analysis_id=record.id,
+        event="analysis_approved",
+        status_before="PENDING_APPROVAL",
+        status_after="APPROVED",
     )
     return ApprovalTransitionResponse(
         analysis_id=record.id,
@@ -42,6 +52,13 @@ def reject_analysis(
         analysis_id,
         actor=payload.actor,
         reason=payload.reason,
+    )
+    log_lifecycle(
+        logger,
+        analysis_id=record.id,
+        event="analysis_rejected",
+        status_before="PENDING_APPROVAL",
+        status_after="REJECTED",
     )
     return ApprovalTransitionResponse(
         analysis_id=record.id,

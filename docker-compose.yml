@@ -1,0 +1,66 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: blastshield
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres_demo_password
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - blastshield_postgres_data:/var/lib/postgresql/data
+      - ./database/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d blastshield"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+
+  migrate:
+    image: postgres:16-alpine
+    environment:
+      PGPASSWORD: postgres_demo_password
+    volumes:
+      - ./database/migrations:/migrations:ro
+    command:
+      - sh
+      - -c
+      - >-
+        psql -h postgres -U postgres -d blastshield -v ON_ERROR_STOP=1
+        -f /migrations/001_day2_control_plane.sql &&
+        psql -h postgres -U postgres -d blastshield -v ON_ERROR_STOP=1
+        -f /migrations/002_day3_execution.sql &&
+        psql -h postgres -U postgres -d blastshield -v ON_ERROR_STOP=1
+        -f /migrations/003_day4_target_schema.sql
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  backend:
+    build:
+      context: ./backend
+    environment:
+      BLASTSHIELD_ANALYSIS_DATABASE_URL: postgresql+psycopg://blastshield_analyzer:analyzer_demo_password@postgres:5432/blastshield
+      BLASTSHIELD_APP_DATABASE_URL: postgresql+psycopg://blastshield_app:app_demo_password@postgres:5432/blastshield
+      BLASTSHIELD_EXECUTION_DATABASE_URL: postgresql+psycopg://blastshield_executor:executor_demo_password@postgres:5432/blastshield
+      BLASTSHIELD_CORS_ORIGINS: '["http://localhost:3000"]'
+      BLASTSHIELD_STATEMENT_TIMEOUT_MS: 5000
+      BLASTSHIELD_LOCK_TIMEOUT_MS: 1000
+      BLASTSHIELD_EXACT_COUNT_MAX_COST: 100000
+      BLASTSHIELD_EXECUTION_STATEMENT_TIMEOUT_MS: 10000
+      BLASTSHIELD_EXECUTION_LOCK_TIMEOUT_MS: 2000
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health')"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+volumes:
+  blastshield_postgres_data:

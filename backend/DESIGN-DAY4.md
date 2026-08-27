@@ -1,5 +1,8 @@
 # BlastShield Day 4 Stabilization and Demo-Readiness Design
 
+Status: **implemented and verified**. See [`DAY4-RELEASE.md`](DAY4-RELEASE.md)
+for the final test, performance, migration, and rehearsal results.
+
 ## Purpose
 
 Day 4 is a release-hardening day, not a feature day. Its job is to make the
@@ -33,10 +36,10 @@ complete.
 
 Current verified baseline:
 
-- Day 1-Day 3 unit and MCP tests pass (`47 passed`);
+- Day 1-Day 4 unit, API-contract, and MCP tests pass (`50 passed`);
 - Python compilation passes;
 - Docker Compose configuration validates;
-- all seven PostgreSQL integration tests pass on a fresh disposable stack;
+- all eight PostgreSQL integration tests pass on a fresh disposable stack;
 - the real HTTP analyze -> approve -> execute lifecycle passes;
 - analyzer, app, and executor database permissions remain isolated;
 - the MCP client mirrors HTTP and cannot execute a pending analysis;
