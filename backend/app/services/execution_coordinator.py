@@ -24,6 +24,26 @@ class ExecutionCoordinator:
         self._revalidator = revalidator or Revalidator()
         self._executor = executor or Executor()
 
+    def _record_failure(
+        self,
+        analysis_id: uuid.UUID,
+        *,
+        event: str,
+        code: str,
+        message: str,
+        started: float,
+    ) -> None:
+        self._repository.mark_failed(analysis_id, code=code, message=message)
+        log_lifecycle(
+            logger,
+            analysis_id=analysis_id,
+            event=event,
+            status_before="APPROVED",
+            status_after="FAILED",
+            duration_ms=(perf_counter() - started) * 1_000,
+            error_code=code,
+        )
+
     def execute(
         self, analysis_id: uuid.UUID
     ) -> ExecutionResponse | StaleExecutionResponse:
@@ -39,35 +59,21 @@ class ExecutionCoordinator:
         try:
             is_valid = self._revalidator.revalidate(record)
         except BlastShieldError as exc:
-            self._repository.mark_failed(
+            self._record_failure(
                 analysis_id,
+                event="revalidation_failed",
                 code=exc.code,
                 message=exc.message,
-            )
-            log_lifecycle(
-                logger,
-                analysis_id=analysis_id,
-                event="revalidation_failed",
-                status_before="APPROVED",
-                status_after="FAILED",
-                duration_ms=(perf_counter() - started) * 1_000,
-                error_code=exc.code,
+                started=started,
             )
             raise
         except Exception as exc:
-            self._repository.mark_failed(
+            self._record_failure(
                 analysis_id,
+                event="revalidation_failed",
                 code="EXECUTION_FAILED",
                 message="Revalidation failed.",
-            )
-            log_lifecycle(
-                logger,
-                analysis_id=analysis_id,
-                event="revalidation_failed",
-                status_before="APPROVED",
-                status_after="FAILED",
-                duration_ms=(perf_counter() - started) * 1_000,
-                error_code="EXECUTION_FAILED",
+                started=started,
             )
             raise ExecutionFailedError("Revalidation failed; nothing was executed.") from exc
 
@@ -87,35 +93,21 @@ class ExecutionCoordinator:
         try:
             affected_rows = self._executor.execute(record)
         except BlastShieldError as exc:
-            self._repository.mark_failed(
+            self._record_failure(
                 analysis_id,
+                event="execution_failed",
                 code=exc.code,
                 message=exc.message,
-            )
-            log_lifecycle(
-                logger,
-                analysis_id=analysis_id,
-                event="execution_failed",
-                status_before="APPROVED",
-                status_after="FAILED",
-                duration_ms=(perf_counter() - started) * 1_000,
-                error_code=exc.code,
+                started=started,
             )
             raise
         except Exception as exc:
-            self._repository.mark_failed(
+            self._record_failure(
                 analysis_id,
+                event="execution_failed",
                 code="EXECUTION_FAILED",
                 message="The approved DELETE failed and was rolled back.",
-            )
-            log_lifecycle(
-                logger,
-                analysis_id=analysis_id,
-                event="execution_failed",
-                status_before="APPROVED",
-                status_after="FAILED",
-                duration_ms=(perf_counter() - started) * 1_000,
-                error_code="EXECUTION_FAILED",
+                started=started,
             )
             raise ExecutionFailedError() from exc
 

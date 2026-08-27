@@ -16,6 +16,18 @@ from app.core.errors import (
 from app.db.app_database import get_session_factory
 from app.db.models import AnalysisRecord
 
+_TIMELINE_BY_STATUS = {
+    "APPROVED": ("approval", "Human approval recorded", "complete"),
+    "REJECTED": ("approval", "Analysis rejected by human", "rejected"),
+    "STALE": (
+        "revalidation",
+        "Production state changed; re-analysis required",
+        "stale",
+    ),
+    "EXECUTED": ("execution", "Approved SQL executed", "complete"),
+    "FAILED": ("failure", "BlastShield operation failed", "failed"),
+}
+
 
 class AnalysisRepository:
     def __init__(
@@ -29,15 +41,13 @@ class AnalysisRepository:
         record: AnalysisRecord,
         *,
         status: str,
-        timeline_key: str,
-        timeline_label: str,
-        timeline_status: str,
     ) -> None:
         report = deepcopy(record.report or {})
         if not report:
             return
         report["status"] = status
         report["requires_approval"] = status == "PENDING_APPROVAL"
+        timeline_key, timeline_label, timeline_status = _TIMELINE_BY_STATUS[status]
         timeline = list(report.get("timeline", []))
         updated = False
         for item in timeline:
@@ -74,7 +84,7 @@ class AnalysisRepository:
         target_table: str,
         source: str,
         reason: str | None,
-    ) -> AnalysisRecord:
+    ) -> None:
         record = AnalysisRecord(
             id=analysis_id,
             original_sql=original_sql,
@@ -90,8 +100,6 @@ class AnalysisRepository:
         with self._session_factory() as session:
             session.add(record)
             session.commit()
-            session.refresh(record)
-        return record
 
     def complete(
         self,
@@ -101,7 +109,7 @@ class AnalysisRepository:
         risk_score: int,
         risk_level: str,
         fingerprint: str,
-    ) -> AnalysisRecord:
+    ) -> None:
         with self._session_factory() as session:
             record = session.get(AnalysisRecord, analysis_id)
             if record is None:
@@ -112,7 +120,38 @@ class AnalysisRepository:
             record.risk_level = risk_level
             record.fingerprint = fingerprint
             session.commit()
+
+    def _transition_pending(
+        self,
+        analysis_id: uuid.UUID,
+        *,
+        status: str,
+        values: dict[str, Any],
+    ) -> AnalysisRecord:
+        with self._session_factory() as session:
+            updated_id = session.execute(
+                update(AnalysisRecord)
+                .where(
+                    AnalysisRecord.id == analysis_id,
+                    AnalysisRecord.status == "PENDING_APPROVAL",
+                )
+                .values(status=status, **values)
+                .returning(AnalysisRecord.id)
+            ).scalar_one_or_none()
+            if updated_id is None:
+                record = self._get_or_raise(session, analysis_id)
+                raise InvalidStateError(
+                    f"Analysis cannot become {status.lower()} from status "
+                    f"{record.status}."
+                )
+            record = self._get_or_raise(session, analysis_id)
+            self._sync_report(
+                record,
+                status=status,
+            )
+            session.commit()
             session.refresh(record)
+            session.expunge(record)
             return record
 
     def approve_pending(
@@ -122,39 +161,15 @@ class AnalysisRepository:
         actor: str | None = None,
         reason: str | None = None,
     ) -> AnalysisRecord:
-        now = datetime.now(timezone.utc)
-        with self._session_factory() as session:
-            updated_id = session.execute(
-                update(AnalysisRecord)
-                .where(
-                    AnalysisRecord.id == analysis_id,
-                    AnalysisRecord.status == "PENDING_APPROVAL",
-                )
-                .values(
-                    status="APPROVED",
-                    approved_at=now,
-                    approved_by=actor,
-                    approval_reason=reason,
-                )
-                .returning(AnalysisRecord.id)
-            ).scalar_one_or_none()
-            if updated_id is None:
-                record = self._get_or_raise(session, analysis_id)
-                raise InvalidStateError(
-                    f"Analysis cannot be approved from status {record.status}."
-                )
-            record = self._get_or_raise(session, analysis_id)
-            self._sync_report(
-                record,
-                status="APPROVED",
-                timeline_key="approval",
-                timeline_label="Human approval recorded",
-                timeline_status="complete",
-            )
-            session.commit()
-            session.refresh(record)
-            session.expunge(record)
-            return record
+        return self._transition_pending(
+            analysis_id,
+            status="APPROVED",
+            values={
+                "approved_at": datetime.now(timezone.utc),
+                "approved_by": actor,
+                "approval_reason": reason,
+            },
+        )
 
     def reject_pending(
         self,
@@ -163,39 +178,15 @@ class AnalysisRepository:
         actor: str | None = None,
         reason: str | None = None,
     ) -> AnalysisRecord:
-        now = datetime.now(timezone.utc)
-        with self._session_factory() as session:
-            updated_id = session.execute(
-                update(AnalysisRecord)
-                .where(
-                    AnalysisRecord.id == analysis_id,
-                    AnalysisRecord.status == "PENDING_APPROVAL",
-                )
-                .values(
-                    status="REJECTED",
-                    rejected_at=now,
-                    rejected_by=actor,
-                    rejection_reason=reason,
-                )
-                .returning(AnalysisRecord.id)
-            ).scalar_one_or_none()
-            if updated_id is None:
-                record = self._get_or_raise(session, analysis_id)
-                raise InvalidStateError(
-                    f"Analysis cannot be rejected from status {record.status}."
-                )
-            record = self._get_or_raise(session, analysis_id)
-            self._sync_report(
-                record,
-                status="REJECTED",
-                timeline_key="approval",
-                timeline_label="Analysis rejected by human",
-                timeline_status="rejected",
-            )
-            session.commit()
-            session.refresh(record)
-            session.expunge(record)
-            return record
+        return self._transition_pending(
+            analysis_id,
+            status="REJECTED",
+            values={
+                "rejected_at": datetime.now(timezone.utc),
+                "rejected_by": actor,
+                "rejection_reason": reason,
+            },
+        )
 
     def claim_approved_for_execution(self, analysis_id: uuid.UUID) -> AnalysisRecord:
         now = datetime.now(timezone.utc)
@@ -222,7 +213,7 @@ class AnalysisRepository:
             session.expunge(record)
             return record
 
-    def mark_stale(self, analysis_id: uuid.UUID) -> AnalysisRecord:
+    def mark_stale(self, analysis_id: uuid.UUID) -> None:
         with self._session_factory() as session:
             record = self._get_or_raise(session, analysis_id)
             if record.status != "APPROVED":
@@ -233,14 +224,8 @@ class AnalysisRepository:
             self._sync_report(
                 record,
                 status="STALE",
-                timeline_key="revalidation",
-                timeline_label="Production state changed; re-analysis required",
-                timeline_status="stale",
             )
             session.commit()
-            session.refresh(record)
-            session.expunge(record)
-            return record
 
     def mark_executed(
         self,
@@ -261,9 +246,6 @@ class AnalysisRepository:
             self._sync_report(
                 record,
                 status="EXECUTED",
-                timeline_key="execution",
-                timeline_label="Approved SQL executed",
-                timeline_status="complete",
             )
             session.commit()
             session.refresh(record)
@@ -289,9 +271,6 @@ class AnalysisRepository:
             self._sync_report(
                 record,
                 status="FAILED",
-                timeline_key="failure",
-                timeline_label="BlastShield operation failed",
-                timeline_status="failed",
             )
             session.commit()
 

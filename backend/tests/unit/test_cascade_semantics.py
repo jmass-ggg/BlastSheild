@@ -12,7 +12,6 @@ def edge(on_delete: str) -> GraphEdge:
         parent_column="id",
         child_column="parent_id",
         on_delete=on_delete,
-        on_update="NO ACTION",
     )
 
 
@@ -32,4 +31,3 @@ def test_maps_fk_behaviors(behavior: str, effect: str) -> None:
 
 def test_stops_propagation_after_set_null() -> None:
     assert dependency_effect([edge("SET NULL"), edge("CASCADE")]) == "NONE"
-

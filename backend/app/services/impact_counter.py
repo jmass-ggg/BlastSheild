@@ -22,7 +22,6 @@ from app.services.sql_parser import ParsedSQL
 class CountMeasurement:
     rows: int
     measurement: Measurement
-    total_cost: float
 
 
 def _plan_document(raw_plan: Any) -> dict[str, Any]:
@@ -72,7 +71,7 @@ def measure_count_query(
             raise AnalysisQueryTimeoutError() from exc
         raise
 
-    return CountMeasurement(rows=rows, measurement=measurement, total_cost=total_cost)
+    return CountMeasurement(rows=rows, measurement=measurement)
 
 
 def count_direct_impact(parsed: ParsedSQL, engine: Engine | None = None) -> DirectImpact:

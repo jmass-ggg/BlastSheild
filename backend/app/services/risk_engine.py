@@ -62,16 +62,7 @@ def calculate_risk(
     recoverable: bool,
 ) -> RiskReport:
     normalized_operation = operation.upper()
-    operation_score = {
-        "SELECT": 0,
-        "INSERT": 8,
-        "UPDATE": 10,
-        "DELETE": 20,
-        "TRUNCATE": 25,
-        "DROP": 25,
-        "ALTER": 22,
-        "CREATE": 8,
-    }.get(normalized_operation, 15)
+    operation_score = 20 if normalized_operation == "DELETE" else 10
 
     dependent_rows = sum(item.rows for item in dependencies)
     direct_score = _row_score(direct_rows)
@@ -119,4 +110,3 @@ def calculate_risk(
         breakdown=breakdown,
         reasons=reasons,
     )
-

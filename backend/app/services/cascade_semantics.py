@@ -1,14 +1,6 @@
 from app.schemas.graph import GraphEdge
 from app.schemas.impact import DependencyEffect
 
-DIRECT_EFFECTS: dict[str, DependencyEffect] = {
-    "CASCADE": "DELETE",
-    "SET NULL": "SET_NULL",
-    "SET DEFAULT": "SET_DEFAULT",
-    "RESTRICT": "BLOCK",
-    "NO ACTION": "BLOCK",
-}
-
 
 def dependency_effect(path_edges: list[GraphEdge]) -> DependencyEffect:
     """Return the actual effect reaching the final table in an FK path."""

@@ -11,8 +11,6 @@ def get_app_engine() -> Engine:
     return create_engine(
         get_settings().app_database_url,
         pool_pre_ping=True,
-        pool_size=5,
-        max_overflow=5,
     )
 
 
@@ -23,4 +21,3 @@ def get_session_factory() -> sessionmaker[Session]:
         expire_on_commit=False,
         autoflush=False,
     )
-

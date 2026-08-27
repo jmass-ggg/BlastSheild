@@ -23,7 +23,6 @@ class ForeignKeyRelationship(BaseModel):
     child_table: str
     child_column: str
     on_delete: str
-    on_update: str
 
 
 class SchemaMetadata(BaseModel):
@@ -45,7 +44,6 @@ class GraphEdge(BaseModel):
     parent_column: str
     child_column: str
     on_delete: str
-    on_update: str
 
 
 class DependencyPath(BaseModel):

@@ -46,7 +46,6 @@ def test_explain_selects_exact_and_estimated_paths(engines) -> None:
     assert exact.measurement == "EXACT"
     assert estimated.rows > 0
     assert estimated.measurement == "ESTIMATED"
-    assert estimated.total_cost > 0
 
 
 def test_complete_analysis_is_correlated_scored_and_persisted(engines) -> None:

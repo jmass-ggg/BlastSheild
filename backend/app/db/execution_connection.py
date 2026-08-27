@@ -12,8 +12,6 @@ def get_execution_engine() -> Engine:
     return create_engine(
         get_execution_settings().execution_database_url,
         pool_pre_ping=True,
-        pool_size=2,
-        max_overflow=2,
     )
 
 
@@ -35,4 +33,3 @@ def execution_transaction(
                 f"SET LOCAL lock_timeout = {selected_settings.execution_lock_timeout_ms}"
             )
             yield connection
-

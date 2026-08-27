@@ -13,8 +13,6 @@ def get_analysis_engine() -> Engine:
     return create_engine(
         settings.analysis_database_url,
         pool_pre_ping=True,
-        pool_size=5,
-        max_overflow=5,
     )
 
 
@@ -34,4 +32,3 @@ def analysis_transaction(engine: Engine | None = None) -> Iterator[Connection]:
                 f"SET LOCAL lock_timeout = {settings.lock_timeout_ms}"
             )
             yield connection
-
