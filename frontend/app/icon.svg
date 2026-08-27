@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="10" y1="6" x2="56" y2="60" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#252B3F"/>
+      <stop offset="1" stop-color="#090C0F"/>
+    </linearGradient>
+    <linearGradient id="shield" x1="24" y1="18" x2="42" y2="47" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#DDE2FF"/>
+      <stop offset="1" stop-color="#80E5C0"/>
+    </linearGradient>
+  </defs>
+  <rect x="2" y="2" width="60" height="60" rx="17" fill="url(#bg)" stroke="#AEB9FF" stroke-opacity=".24" stroke-width="2"/>
+  <ellipse cx="32" cy="32" rx="22" ry="13" transform="rotate(-28 32 32)" stroke="#72DBE8" stroke-opacity=".45" stroke-width="1.5"/>
+  <ellipse cx="32" cy="32" rx="18" ry="25" transform="rotate(35 32 32)" stroke="#9BA7FF" stroke-opacity=".22"/>
+  <path d="M32 15.5 44.5 21v9.3c0 8.5-4.9 15.1-12.5 18.2-7.6-3.1-12.5-9.7-12.5-18.2V21L32 15.5Z" stroke="url(#shield)" stroke-width="3" stroke-linejoin="round"/>
+  <circle cx="32" cy="31" r="3" fill="#A2F4D1"/>
+  <circle cx="32" cy="31" r="7" stroke="#68E3B3" stroke-opacity=".18"/>
+</svg>
