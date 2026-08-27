@@ -1,16 +1,14 @@
 "use client";
 
 import React from "react";
+import { motion } from "framer-motion";
 import { RiskBadge } from "./RiskBadge";
 import { RiskLevel } from "@/lib/types";
-import { 
-  ShieldAlert, 
-  ShieldCheck, 
-  Play, 
-  XOctagon, 
-  Edit3, 
-  Lock 
+import {
+  ShieldAlert, ShieldCheck, Play, XOctagon, Edit3, Lock,
+  AlertTriangle,
 } from "lucide-react";
+import { formatNumber } from "@/lib/utils";
 
 interface ApprovalBarProps {
   riskScore: number;
@@ -32,71 +30,100 @@ export function ApprovalBar({
   onApproveAndExecute,
 }: ApprovalBarProps) {
   return (
-    <nav 
+    <nav
       aria-label="Action Execution Bar"
-      className="fixed bottom-0 left-0 right-0 z-40 bg-[#0c121e]/95 border-t border-slate-700/80 backdrop-blur-xl shadow-2xl"
+      className="action-bar"
     >
-      <div className="max-w-[1600px] mx-auto px-4 lg:px-6 py-3 flex flex-col sm:flex-row items-center justify-between gap-3">
-        {/* Left: Summary Status & Risk Badge */}
-        <div className="flex items-center gap-3 w-full sm:w-auto">
-          <div className="p-2 rounded-xl bg-slate-900 border border-slate-800 flex-shrink-0">
-            {isUsingSafer ? (
-              <ShieldCheck className="w-5 h-5 text-emerald-400" />
-            ) : (
-              <ShieldAlert className="w-5 h-5 text-rose-400" />
-            )}
-          </div>
+      {/* Progress indicator strip */}
+      <div
+        className="h-[2px] w-full"
+        style={{
+          background: isUsingSafer
+            ? "linear-gradient(90deg, transparent, rgba(16,185,129,0.6), transparent)"
+            : "linear-gradient(90deg, transparent, rgba(239,68,68,0.6), transparent)",
+        }}
+      />
 
-          <div>
-            <div className="flex items-center gap-2">
+      <div className="max-w-[1500px] mx-auto px-5 py-3 flex flex-col sm:flex-row items-center justify-between gap-3">
+
+        {/* Left: Status summary */}
+        <div className="flex items-center gap-3 w-full sm:w-auto min-w-0">
+          <motion.div
+            className="p-2 rounded-xl flex-shrink-0"
+            style={{
+              background: isUsingSafer ? "rgba(16,185,129,0.1)" : "rgba(239,68,68,0.1)",
+              border: `1px solid ${isUsingSafer ? "rgba(16,185,129,0.25)" : "rgba(239,68,68,0.25)"}`,
+            }}
+            animate={!isUsingSafer ? { boxShadow: ["0 0 0 0 rgba(239,68,68,0.3)", "0 0 0 8px rgba(239,68,68,0)"] } : {}}
+            transition={{ duration: 2, repeat: Infinity }}
+          >
+            {isUsingSafer
+              ? <ShieldCheck className="w-4 h-4" style={{ color: "#34d399" }} />
+              : <ShieldAlert className="w-4 h-4" style={{ color: "#f87171" }} />
+            }
+          </motion.div>
+
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
               <RiskBadge level={riskLevel} score={riskScore} size="sm" />
-              <span className="text-xs font-mono font-bold text-white">
+              <span className="text-xs font-bold text-white truncate">
                 {isUsingSafer ? "Safe Soft-Delete Configured" : "Dangerous Hard Deletion Selected"}
               </span>
             </div>
-            <p className="text-xs text-slate-400 mt-0.5">
+            <p className="text-[11px] mt-0.5 truncate" style={{ color: "#475569" }}>
               {isUsingSafer
-                ? "0 Cascades • 12,481 users updated • $0 ARR Risk"
-                : `${totalAffectedRows.toLocaleString()} records in blast radius across 3 cascading tables`}
+                ? "0 Cascades · 0 Cascaded Rows · $0 ARR Risk"
+                : `${formatNumber(totalAffectedRows)} records in blast radius`
+              }
             </p>
           </div>
+
+          {/* Danger warning chip */}
+          {!isUsingSafer && (
+            <div className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-full flex-shrink-0"
+              style={{
+                background: "rgba(239,68,68,0.08)",
+                border: "1px solid rgba(239,68,68,0.18)",
+              }}>
+              <AlertTriangle className="w-3 h-3" style={{ color: "#f87171" }} />
+              <span className="text-[10px] font-bold" style={{ color: "#f87171", fontFamily: "var(--font-mono)" }}>
+                IRREVERSIBLE
+              </span>
+            </div>
+          )}
         </div>
 
-        {/* Right: Actions Group with 1 Obvious Primary CTA (Hick's Law) */}
-        <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end">
-          {/* Secondary Action: Cancel */}
+        {/* Right: Action buttons */}
+        <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
           <button
             onClick={onCancel}
-            className="min-h-[44px] px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700 text-xs font-semibold transition-colors flex items-center gap-1.5 touch-target"
+            className="btn btn-ghost text-xs"
+            style={{ minHeight: 42, padding: "10px 16px" }}
           >
-            <XOctagon className="w-4 h-4 text-slate-400" />
-            <span>Cancel</span>
+            <XOctagon className="w-3.5 h-3.5" style={{ color: "#64748b" }} />
+            Cancel
           </button>
 
-          {/* Secondary Action: Modify */}
           <button
             onClick={onModify}
-            className="min-h-[44px] px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700 text-xs font-semibold transition-colors flex items-center gap-1.5 touch-target"
+            className="btn btn-ghost text-xs"
+            style={{ minHeight: 42, padding: "10px 16px" }}
           >
-            <Edit3 className="w-4 h-4 text-indigo-400" />
-            <span>Modify SQL</span>
+            <Edit3 className="w-3.5 h-3.5" style={{ color: "#818cf8" }} />
+            <span className="hidden sm:inline">Modify SQL</span>
           </button>
 
-          {/* Primary Action (Hick's Law: 1 Key High-Impact Button) */}
-          <button
+          <motion.button
             onClick={onApproveAndExecute}
-            className={`min-h-[44px] px-6 rounded-xl text-xs font-extrabold tracking-wide uppercase shadow-lg transition-all duration-200 flex items-center gap-2 touch-target ${
-              isUsingSafer
-                ? "bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-[0_0_24px_rgba(16,185,129,0.35)] ring-2 ring-emerald-300"
-                : "bg-rose-600 hover:bg-rose-500 text-white shadow-[0_0_24px_rgba(244,63,94,0.35)] ring-1 ring-rose-400"
-            }`}
+            className={`btn ${isUsingSafer ? "btn-safe btn-safe-pulse" : "btn-danger btn-danger-pulse"}`}
+            style={{ minHeight: 42, padding: "10px 22px", gap: 8 }}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
           >
-            <Lock className="w-4 h-4" />
-            <span>
-              {isUsingSafer ? "Approve & Execute (Safe Mode)" : "Execute Anyway (Danger)"}
-            </span>
-            <Play className="w-3.5 h-3.5 fill-current ml-0.5" />
-          </button>
+            <Lock className="w-3.5 h-3.5" />
+            {isUsingSafer ? "Approve & Execute (Safe)" : "Execute Anyway (Danger)"}
+            <Play className="w-3 h-3 fill-current" />
+          </motion.button>
         </div>
       </div>
     </nav>

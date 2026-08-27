@@ -1,13 +1,8 @@
 "use client";
 
 import React from "react";
-import { 
-  Shield, 
-  Database, 
-  RotateCcw, 
-  FileText, 
-  Server
-} from "lucide-react";
+import { motion } from "framer-motion";
+import { Shield, Database, RotateCcw, FileText } from "lucide-react";
 import { DEMO_SCENARIOS } from "@/lib/mockData";
 
 interface HeaderProps {
@@ -28,91 +23,107 @@ export function Header({
   isResettingSandbox = false,
 }: HeaderProps) {
   return (
-    <header className="sticky top-0 z-30 w-full border-b border-slate-800 bg-[#070b13]/95 backdrop-blur-md">
-      <div className="flex items-center justify-between px-4 lg:px-6 h-14 max-w-[1600px] mx-auto">
-        {/* Left: Brand Logo & Title */}
+    <header className="sticky top-0 z-40 nav-bar">
+      <div className="flex items-center justify-between px-5 h-[54px] max-w-[1500px] mx-auto">
+        {/* Brand */}
         <div className="flex items-center gap-3">
-          <div className="flex items-center justify-center w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500 to-cyan-500 p-0.5 shadow-md">
-            <div className="w-full h-full bg-slate-950 rounded-[10px] flex items-center justify-center">
-              <Shield className="w-4 h-4 text-cyan-400" />
-            </div>
-          </div>
-
+          <motion.div
+            className="w-8 h-8 rounded-xl flex items-center justify-center"
+            style={{ background: "linear-gradient(135deg, #6366f1, #22d3ee)" }}
+            whileHover={{ scale: 1.08, rotate: 5 }}
+            transition={{ type: "spring", stiffness: 400, damping: 20 }}
+          >
+            <Shield className="w-4 h-4 text-white" />
+          </motion.div>
           <div className="flex items-baseline gap-2">
-            <span className="font-extrabold text-base tracking-tight text-white font-mono">
-              BlastShield<span className="text-cyan-400">AI</span>
+            <span className="font-black text-[15px] tracking-tight text-white">
+              BlastShield<span style={{ color: "#22d3ee" }}>AI</span>
             </span>
-            <span className="hidden sm:inline-block text-[10px] font-bold px-1.5 py-0.5 rounded bg-indigo-950 text-indigo-300 border border-indigo-500/30 font-mono">
-              TrueForge Gate
-            </span>
+            <span className="tag tag-indigo hidden sm:flex">TrueForge Gate</span>
           </div>
         </div>
 
-        {/* Center: Live Environment Monitors */}
+        {/* Center live status */}
         <div className="hidden md:flex items-center gap-3">
-          <div className="flex items-center gap-2 px-3 py-1 rounded-lg bg-slate-900 border border-slate-800 text-xs font-mono">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-[11px]"
+            style={{
+              background: "rgba(255,255,255,0.03)",
+              border: "1px solid rgba(255,255,255,0.07)",
+              color: "#475569",
+              fontFamily: "var(--font-mono)",
+            }}>
+            <span className="relative flex w-2 h-2">
+              <span className="animate-ping absolute w-full h-full rounded-full bg-emerald-400 opacity-75" />
+              <span className="relative rounded-full w-2 h-2 bg-emerald-500" />
             </span>
-            <span className="text-slate-400">PROD:</span>
-            <span className="text-slate-200 font-bold">blastshield_prod</span>
+            PROD: blastshield_prod
           </div>
-
-          <div className="flex items-center gap-2 px-3 py-1 rounded-lg bg-slate-900 border border-slate-800 text-xs font-mono">
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-[11px]"
+            style={{
+              background: "rgba(255,255,255,0.03)",
+              border: "1px solid rgba(255,255,255,0.07)",
+              color: "#475569",
+              fontFamily: "var(--font-mono)",
+            }}>
             <span className="w-2 h-2 rounded-full bg-cyan-400" />
-            <span className="text-slate-400">SANDBOX:</span>
-            <span className="text-cyan-300 font-bold">Isolated Clone</span>
+            SANDBOX: Isolated Clone
           </div>
         </div>
 
-        {/* Right: Quick Tools (Schema, Audit, Reset) */}
+        {/* Right tools */}
         <div className="flex items-center gap-2">
-          {/* Quick Scenario Selector Dropdown */}
           <div className="hidden lg:flex items-center gap-1.5">
-            <span className="text-xs text-slate-400 font-mono">Scenario:</span>
+            <span className="text-[11px]" style={{ color: "#475569", fontFamily: "var(--font-mono)" }}>Scenario:</span>
             <select
               value={currentScenarioId}
-              onChange={(e) => onSelectScenario(e.target.value)}
-              className="min-h-[38px] px-3 py-1 bg-slate-900 border border-slate-700 rounded-xl text-xs font-mono text-slate-200 focus:outline-none focus:border-indigo-500 cursor-pointer touch-target"
+              onChange={e => onSelectScenario(e.target.value)}
+              className="px-3 py-1.5 rounded-xl text-[11px] focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
+              style={{
+                background: "rgba(255,255,255,0.04)",
+                border: "1px solid rgba(255,255,255,0.09)",
+                color: "#e2e8f0",
+                fontFamily: "var(--font-mono)",
+                minHeight: 36,
+              }}
             >
-              {DEMO_SCENARIOS.map((sc) => (
-                <option key={sc.id} value={sc.id}>
+              {DEMO_SCENARIOS.map(sc => (
+                <option key={sc.id} value={sc.id} style={{ background: "#060912" }}>
                   {sc.title} ({sc.expectedRiskLevel})
                 </option>
               ))}
             </select>
           </div>
 
-          {/* Schema Explorer */}
           <button
             onClick={onOpenSchema}
-            className="min-h-[38px] px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 text-xs font-medium transition-colors flex items-center gap-1.5 touch-target"
-            title="Inspect Database Schema"
+            className="btn btn-ghost text-xs"
+            style={{ minHeight: 36, padding: "8px 12px" }}
+            title="Database Schema"
           >
-            <Database className="w-3.5 h-3.5 text-indigo-400" />
+            <Database className="w-3.5 h-3.5" style={{ color: "#818cf8" }} />
             <span className="hidden sm:inline">Schema</span>
           </button>
-
-          {/* Audit Log */}
           <button
             onClick={onOpenAudit}
-            className="min-h-[38px] px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 text-xs font-medium transition-colors flex items-center gap-1.5 touch-target"
-            title="View Compliance Audit Log"
+            className="btn btn-ghost text-xs"
+            style={{ minHeight: 36, padding: "8px 12px" }}
+            title="Audit Log"
           >
-            <FileText className="w-3.5 h-3.5 text-cyan-400" />
+            <FileText className="w-3.5 h-3.5" style={{ color: "#22d3ee" }} />
             <span className="hidden sm:inline">Audit</span>
           </button>
-
-          {/* Reset Sandbox */}
           <button
             onClick={onResetSandbox}
             disabled={isResettingSandbox}
-            className="min-h-[38px] px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 text-xs font-medium transition-colors disabled:opacity-50 flex items-center gap-1.5 touch-target"
-            title="Reset Sandbox to clean snapshot"
+            className="btn btn-ghost text-xs disabled:opacity-50"
+            style={{ minHeight: 36, padding: "8px 12px" }}
+            title="Reset Sandbox"
           >
-            <RotateCcw className={`w-3.5 h-3.5 text-amber-400 ${isResettingSandbox ? "animate-spin" : ""}`} />
-            <span className="hidden sm:inline">Reset Sandbox</span>
+            <RotateCcw
+              className={`w-3.5 h-3.5 ${isResettingSandbox ? "animate-spin" : ""}`}
+              style={{ color: "#fbbf24" }}
+            />
+            <span className="hidden sm:inline">Reset</span>
           </button>
         </div>
       </div>

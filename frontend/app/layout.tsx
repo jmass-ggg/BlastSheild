@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -10,16 +10,21 @@ const inter = Inter({
 });
 
 const jetbrainsMono = JetBrains_Mono({
-  variable: "--font-mono",
+  variable: "--font-jetbrains",
   subsets: ["latin"],
   display: "swap",
-  weight: ["400", "500", "600", "700"],
+  weight: ["400", "500", "600", "700", "800"],
 });
 
 export const metadata: Metadata = {
-  title: "BlastShieldAI — Pre-Execution Impact Analysis for TrueForge Agents",
+  title: "BlastShield — Production Safety Gate for AI Agents",
   description:
-    "Intercept dangerous AI-agent actions, simulate them safely in sandboxes, calculate blast radius, explain business consequences, and require human approval.",
+    "Contain dangerous AI-agent database actions before production. Simulate every cascade, measure business impact, and approve a safer plan with evidence.",
+};
+
+export const viewport: Viewport = {
+  themeColor: "#07090b",
+  colorScheme: "dark",
 };
 
 export default function RootLayout({
@@ -32,7 +37,9 @@ export default function RootLayout({
       lang="en"
       className={`${inter.variable} ${jetbrainsMono.variable} dark h-full`}
     >
-      <body className="min-h-screen bg-[#07090e] text-slate-100 selection:bg-indigo-500/30 selection:text-indigo-200 antialiased">
+      <body
+        className="min-h-screen antialiased"
+      >
         {children}
       </body>
     </html>

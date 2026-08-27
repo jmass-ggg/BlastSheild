@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Check, Copy, Terminal, ShieldAlert } from "lucide-react";
+import { Check, Copy, ShieldAlert, Shield } from "lucide-react";
 import { OperationType } from "@/lib/types";
 
 interface SqlViewerProps {
@@ -13,6 +13,54 @@ interface SqlViewerProps {
   highlightLines?: number[];
   variant?: "danger" | "safe" | "neutral";
 }
+
+// Syntax highlighting token map
+const SQL_KEYWORDS = new Set([
+  "DELETE","SELECT","UPDATE","INSERT","INTO","SET","FROM","WHERE","AND","OR",
+  "TRUNCATE","DROP","TABLE","NOW","INTERVAL","NULL","IS","NOT","CASCADE",
+  "RESTRICT","LIMIT","COUNT","GROUP","BY","ORDER","DESC","ASC","ALTER",
+  "RENAME","TO","AS","DISTINCT","JOIN","ON","LEFT","RIGHT","INNER","OUTER",
+  "VALUES","WITH","HAVING","UNION","ALL","EXISTS","IN","BETWEEN","LIKE",
+]);
+
+function tokenizeSQL(line: string): { text: string; type: string }[] {
+  const tokens: { text: string; type: string }[] = [];
+  const pattern = /('[^']*'|"[^"]*"|--[^\n]*|\/\*[\s\S]*?\*\/|\b\w+\b|[^\w\s]|\s+)/g;
+  let match;
+  while ((match = pattern.exec(line)) !== null) {
+    const t = match[0];
+    const upper = t.toUpperCase();
+    if (SQL_KEYWORDS.has(upper)) {
+      const danger = ["DELETE","DROP","TRUNCATE"].includes(upper);
+      const update = ["UPDATE","SET"].includes(upper);
+      const clause = ["FROM","WHERE","AND","OR","ON","JOIN","LEFT","RIGHT","INNER","OUTER"].includes(upper);
+      tokens.push({ text: t, type: danger ? "danger-kw" : update ? "update-kw" : clause ? "clause-kw" : "kw" });
+    } else if (t.startsWith("'") || t.startsWith('"')) {
+      tokens.push({ text: t, type: "string" });
+    } else if (t.startsWith("--") || t.startsWith("/*")) {
+      tokens.push({ text: t, type: "comment" });
+    } else if (/^\d+(\.\d+)?$/.test(t)) {
+      tokens.push({ text: t, type: "number" });
+    } else if (/^[a-z_][a-z0-9_]*$/i.test(t) && !SQL_KEYWORDS.has(upper)) {
+      tokens.push({ text: t, type: "ident" });
+    } else {
+      tokens.push({ text: t, type: "punct" });
+    }
+  }
+  return tokens;
+}
+
+const TOKEN_COLORS: Record<string, string> = {
+  "danger-kw":  "#f87171",
+  "update-kw":  "#34d399",
+  "clause-kw":  "#c4b5fd",
+  "kw":         "#67e8f9",
+  "string":     "#86efac",
+  "comment":    "#475569",
+  "number":     "#fde68a",
+  "ident":      "#e2e8f0",
+  "punct":      "#94a3b8",
+};
 
 export function SqlViewer({
   sql,
@@ -30,138 +78,92 @@ export function SqlViewer({
     setTimeout(() => setCopied(false), 2000);
   };
 
-  // Syntax highlighter for SQL keywords and identifiers
-  const renderHighlightedSql = (code: string) => {
-    const lines = code.trim().split("\n");
+  const lines = sql.trim().split("\n");
+  const accentColor = variant === "danger" ? "#ef4444" : variant === "safe" ? "#10b981" : "#6366f1";
+  const borderColor = variant === "danger" ? "rgba(239,68,68,0.2)"
+    : variant === "safe" ? "rgba(16,185,129,0.2)" : "rgba(99,102,241,0.2)";
 
-    return lines.map((line, lineIdx) => {
-      // Split tokens carefully
-      const tokens = line.split(/(\s+|[,;()=<>'-]+|\b(?:DELETE|SELECT|UPDATE|INSERT|INTO|SET|FROM|WHERE|AND|OR|TRUNCATE|DROP|TABLE|NOW|INTERVAL|NULL|IS|NOT|CASCADE|RESTRICT|LIMIT|COUNT|GROUP|BY|ORDER|DESC|ASC)\b)/gi);
-
-      return (
-        <div key={lineIdx} className="table-row">
-          <span className="table-cell select-none pr-4 text-right text-xs font-mono text-slate-600">
-            {lineIdx + 1}
-          </span>
-          <span className="table-cell font-mono text-xs leading-relaxed">
-            {tokens.map((token, tIdx) => {
-              const upper = token.toUpperCase();
-              if (
-                [
-                  "DELETE", "SELECT", "UPDATE", "INSERT", "INTO", "SET",
-                  "FROM", "WHERE", "AND", "OR", "TRUNCATE", "DROP",
-                  "TABLE", "NOW", "INTERVAL", "NULL", "IS", "NOT",
-                  "CASCADE", "RESTRICT", "LIMIT", "COUNT", "GROUP",
-                  "BY", "ORDER", "DESC", "ASC"
-                ].includes(upper)
-              ) {
-                return (
-                  <span key={tIdx} className="text-cyan-400 font-bold">
-                    {token}
-                  </span>
-                );
-              }
-              if (["users", "orders", "payments", "subscriptions", "invoices", "sessions"].includes(token.toLowerCase())) {
-                return (
-                  <span key={tIdx} className="text-rose-400 font-semibold underline decoration-rose-500/40 underline-offset-2">
-                    {token}
-                  </span>
-                );
-              }
-              if (token.startsWith("'") && token.endsWith("'")) {
-                return (
-                  <span key={tIdx} className="text-emerald-300">
-                    {token}
-                  </span>
-                );
-              }
-              if (/^\d+$/.test(token)) {
-                return (
-                  <span key={tIdx} className="text-amber-300">
-                    {token}
-                  </span>
-                );
-              }
-              return <span key={tIdx} className="text-slate-200">{token}</span>;
-            })}
-          </span>
-        </div>
-      );
-    });
-  };
-
-  const getBorderAndBg = () => {
-    switch (variant) {
-      case "danger":
-        return "border-rose-500/30 bg-slate-950/90";
-      case "safe":
-        return "border-emerald-500/30 bg-slate-950/90";
-      default:
-        return "border-slate-800 bg-slate-950/90";
-    }
-  };
+  const opStyle = operation === "DELETE" || operation === "DROP" || operation === "TRUNCATE"
+    ? { bg: "rgba(239,68,68,0.1)", color: "#fca5a5", border: "rgba(239,68,68,0.25)" }
+    : operation === "UPDATE"
+    ? { bg: "rgba(245,158,11,0.1)", color: "#fde68a", border: "rgba(245,158,11,0.25)" }
+    : { bg: "rgba(16,185,129,0.1)", color: "#6ee7b7", border: "rgba(16,185,129,0.25)" };
 
   return (
-    <div className={`rounded-xl border overflow-hidden transition-all duration-300 ${getBorderAndBg()}`}>
-      {/* Header bar */}
-      <div className="flex items-center justify-between px-3.5 py-2 bg-slate-900/80 border-b border-slate-800/80">
-        <div className="flex items-center gap-2">
-          <Terminal className="w-3.5 h-3.5 text-slate-400" />
-          <span className="text-xs font-semibold text-slate-300 font-mono">
+    <div className="terminal" style={{ borderColor }}>
+      {/* Terminal dots header */}
+      <div className="terminal-header">
+        <div className="flex items-center gap-3">
+          <div className="terminal-dots">
+            <div className="terminal-dot terminal-dot-red" />
+            <div className="terminal-dot terminal-dot-amber" />
+            <div className="terminal-dot terminal-dot-green" />
+          </div>
+          <span className="text-[10px] font-bold uppercase tracking-[0.1em]"
+            style={{ color: accentColor, fontFamily: "var(--font-mono)" }}>
             {title || "SQL Statement"}
           </span>
           {operation && (
-            <span
-              className={`text-[10px] font-extrabold px-2 py-0.5 rounded font-mono uppercase ${
-                operation === "DELETE" || operation === "DROP" || operation === "TRUNCATE"
-                  ? "bg-rose-500/20 text-rose-400 border border-rose-500/40"
-                  : operation === "UPDATE"
-                  ? "bg-amber-500/20 text-amber-400 border border-amber-500/40"
-                  : "bg-emerald-500/20 text-emerald-400 border border-emerald-500/40"
-              }`}
-            >
+            <span className="text-[9px] font-black px-1.5 py-0.5 rounded uppercase"
+              style={{
+                background: opStyle.bg,
+                color: opStyle.color,
+                border: `1px solid ${opStyle.border}`,
+                fontFamily: "var(--font-mono)",
+              }}>
               {operation}
             </span>
           )}
           {table && (
-            <span className="text-[11px] text-slate-400 font-mono">
-              target: <strong className="text-slate-200">{table}</strong>
+            <span className="text-[10px]" style={{ color: "#64748b", fontFamily: "var(--font-mono)" }}>
+              → <strong style={{ color: "#94a3b8" }}>{table}</strong>
             </span>
           )}
         </div>
 
         <div className="flex items-center gap-2">
           {isDangerous && (
-            <span className="flex items-center gap-1 text-[11px] font-bold text-rose-400 bg-rose-950/50 px-2 py-0.5 rounded border border-rose-500/30">
+            <span className="hidden sm:flex items-center gap-1 text-[10px] font-bold"
+              style={{ color: "#f87171" }}>
               <ShieldAlert className="w-3 h-3" />
-              Destructive Action Intercepted
+              Intercepted
             </span>
           )}
           <button
             onClick={handleCopy}
-            className="flex items-center gap-1 px-2 py-1 rounded bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white text-xs transition-colors"
-            title="Copy SQL query"
+            className="flex items-center gap-1 px-2 py-1 rounded transition-all text-[11px]"
+            style={{
+              background: "rgba(255,255,255,0.04)",
+              border: "1px solid rgba(255,255,255,0.08)",
+              color: copied ? "#34d399" : "#64748b",
+              fontFamily: "var(--font-mono)",
+            }}
           >
-            {copied ? (
-              <>
-                <Check className="w-3 h-3 text-emerald-400" />
-                <span className="text-emerald-400">Copied</span>
-              </>
-            ) : (
-              <>
-                <Copy className="w-3 h-3" />
-                <span>Copy</span>
-              </>
-            )}
+            {copied ? <><Check className="w-3 h-3" />Copied</> : <><Copy className="w-3 h-3" />Copy</>}
           </button>
         </div>
       </div>
 
-      {/* Code container */}
-      <div className="p-3.5 overflow-x-auto bg-[#070b13]">
-        <div className="table w-full">
-          {renderHighlightedSql(sql)}
-        </div>
+      {/* Code body */}
+      <div className="terminal-body overflow-x-auto" style={{ paddingBottom: 16 }}>
+        {lines.map((line, i) => {
+          const tokens = tokenizeSQL(line);
+          return (
+            <div key={i} className="code-line">
+              <span className="code-ln">{i + 1}</span>
+              <code className="text-xs leading-loose" style={{ fontFamily: "var(--font-mono)" }}>
+                {tokens.length === 0
+                  ? <span style={{ color: "#475569" }}> </span>
+                  : tokens.map((tok, j) => (
+                    <span key={j} style={{ color: TOKEN_COLORS[tok.type] || "#e2e8f0" }}>
+                      {tok.text}
+                    </span>
+                  ))
+                }
+              </code>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

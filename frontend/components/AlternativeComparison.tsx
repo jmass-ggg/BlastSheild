@@ -1,18 +1,13 @@
 "use client";
 
 import React from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { SqlAlternative } from "@/lib/types";
 import { SqlViewer } from "./SqlViewer";
-import { 
-  ShieldCheck, 
-  ShieldAlert, 
-  Sparkles, 
-  Check, 
-  ArrowRight, 
-  TrendingDown, 
-  RotateCcw,
-  CheckCircle2
+import {
+  ShieldCheck, ShieldAlert, Sparkles, Check,
+  TrendingDown, RotateCcw, CheckCircle2, AlertTriangle,
+  ArrowRight,
 } from "lucide-react";
 import { formatCurrency, formatNumber } from "@/lib/utils";
 
@@ -39,197 +34,186 @@ export function AlternativeComparison({
 }: AlternativeComparisonProps) {
   const totalOriginalAffected = originalDirectRows + originalIndirectRows;
 
+  const MetricRow = ({ label, danger, safe }: { label: string; danger: string; safe: string }) => (
+    <div className="flex items-center justify-between gap-4 py-2 border-b"
+      style={{ borderColor: "rgba(255,255,255,0.05)" }}>
+      <span className="text-[11px]" style={{ color: "#475569", minWidth: 130 }}>{label}</span>
+      <div className="flex items-center gap-4 flex-1">
+        <span className="text-[11px] font-mono font-bold flex-1 text-right"
+          style={{ color: !isUsingSafer ? "#f87171" : "#64748b" }}>
+          {danger}
+        </span>
+        <ArrowRight className="w-3 h-3 flex-shrink-0" style={{ color: "#334155" }} />
+        <span className="text-[11px] font-mono font-bold flex-1"
+          style={{ color: isUsingSafer ? "#34d399" : "#64748b" }}>
+          {safe}
+        </span>
+      </div>
+    </div>
+  );
+
   return (
-    <div className="rounded-2xl border border-slate-800 bg-[#101726] p-5 shadow-xl space-y-4">
-      {/* Header with Segmented Action Switcher */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800">
+    <div className="card p-5 space-y-5">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h3 className="text-sm font-bold text-white uppercase tracking-wider font-mono flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-indigo-400" />
-            Decision Engine: Compare Candidate Actions
+          <h3 className="text-sm font-black text-white flex items-center gap-2">
+            <Sparkles className="w-4 h-4" style={{ color: "#818cf8" }} />
+            Decision Engine
           </h3>
-          <p className="text-xs text-slate-400 mt-0.5">
-            Select which action to route to the production authorization gate
+          <p className="text-[11px] mt-0.5" style={{ color: "#475569" }}>
+            Compare and select the action to route to the production gate
           </p>
         </div>
 
-        {/* Segmented Switcher Controls (44px touch targets) */}
-        <div className="flex items-center p-1 rounded-xl bg-slate-900 border border-slate-800 self-start sm:self-auto">
+        {/* Segmented switcher */}
+        <div className="switcher self-start sm:self-auto">
           <button
             onClick={() => onToggleAlternative(false)}
-            className={`min-h-[38px] px-3.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 touch-target ${
-              !isUsingSafer
-                ? "bg-rose-950 text-rose-300 border border-rose-600/50 shadow-md"
-                : "text-slate-400 hover:text-white"
-            }`}
+            className={`switcher-tab ${!isUsingSafer ? "active-danger" : ""}`}
           >
-            <ShieldAlert className="w-3.5 h-3.5 text-rose-400" />
-            <span>Original (85 Risk)</span>
+            <ShieldAlert className="w-3 h-3 inline mr-1" />
+            Original ({originalRiskScore})
           </button>
-          
           <button
             onClick={() => onToggleAlternative(true)}
-            className={`min-h-[38px] px-4 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 touch-target ${
-              isUsingSafer
-                ? "bg-emerald-500 text-slate-950 shadow-[0_0_16px_rgba(16,185,129,0.3)] font-extrabold"
-                : "text-slate-400 hover:text-white"
-            }`}
+            className={`switcher-tab ${isUsingSafer ? "active-safe" : ""}`}
           >
-            <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Recommended (34 Risk) ★</span>
+            <Sparkles className="w-3 h-3 inline mr-1" />
+            Safe ({alternative.riskScore}) ★
           </button>
         </div>
       </div>
 
-      {/* Side-by-Side Visual Comparison */}
+      {/* Comparison cards */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Card 1: Original Destructive Intent */}
-        <div
+        {/* Original */}
+        <motion.div
           onClick={() => onToggleAlternative(false)}
-          className={`relative rounded-xl border p-4 cursor-pointer transition-all duration-200 ${
-            !isUsingSafer
-              ? "bg-rose-950/20 border-rose-500/60 ring-2 ring-rose-500/30"
-              : "bg-slate-900/40 border-slate-800/80 opacity-60 hover:opacity-100"
-          }`}
+          className="rounded-xl p-4 cursor-pointer transition-all duration-200"
+          style={{
+            background: !isUsingSafer ? "rgba(239,68,68,0.06)" : "rgba(255,255,255,0.015)",
+            border: `1px solid ${!isUsingSafer ? "rgba(239,68,68,0.35)" : "rgba(255,255,255,0.06)"}`,
+            boxShadow: !isUsingSafer ? "0 0 30px rgba(239,68,68,0.08)" : "none",
+            opacity: isUsingSafer ? 0.65 : 1,
+          }}
+          whileHover={{ opacity: 1 }}
         >
-          <div className="flex items-center justify-between mb-2.5">
+          <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              <ShieldAlert className="w-4 h-4 text-rose-400" />
-              <span className="font-mono text-xs font-bold text-rose-300 uppercase tracking-wider">
-                Original Hard Delete
+              <ShieldAlert className="w-4 h-4" style={{ color: "#f87171" }} />
+              <span className="text-xs font-bold uppercase tracking-wider"
+                style={{ color: "#f87171", fontFamily: "var(--font-mono)" }}>
+                Hard Delete
               </span>
             </div>
-            <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/40">
-              Risk: {originalRiskScore} / 100 (CRITICAL)
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+              style={{ background: "rgba(239,68,68,0.1)", color: "#fca5a5", border: "1px solid rgba(239,68,68,0.2)", fontFamily: "var(--font-mono)" }}>
+              {originalRiskScore}/100 CRITICAL
             </span>
           </div>
-
           <div className="mb-3">
-            <SqlViewer
-              sql={originalSql}
-              operation="DELETE"
-              table="users"
-              title="Destructive SQL Query"
-              variant="danger"
-            />
+            <SqlViewer sql={originalSql} title="Destructive SQL" variant="danger" />
           </div>
-
-          {/* Quick Metrics Table */}
-          <div className="space-y-1.5 text-xs">
-            <div className="flex items-center justify-between py-1 border-b border-slate-800">
-              <span className="text-slate-400">Total Rows Destroyed:</span>
-              <span className="font-mono font-bold text-rose-400">
-                {formatNumber(totalOriginalAffected)} records
-              </span>
-            </div>
-            <div className="flex items-center justify-between py-1 border-b border-slate-800">
-              <span className="text-slate-400">Cascading Tables:</span>
-              <span className="font-mono font-bold text-rose-400">
-                3 Tables (Orders, Payments, Subs)
-              </span>
-            </div>
-            <div className="flex items-center justify-between py-1 border-b border-slate-800">
-              <span className="text-slate-400">ARR Revenue Exposure:</span>
-              <span className="font-mono font-bold text-rose-400">
-                {formatCurrency(originalArrRisk)} (347 active)
-              </span>
-            </div>
-            <div className="flex items-center justify-between py-1">
-              <span className="text-slate-400">Rollback Capability:</span>
-              <span className="text-rose-400 font-semibold">
-                Hard (Restore from backup required)
-              </span>
-            </div>
+          <div className="space-y-1 text-[11px]" style={{ color: "#64748b", fontFamily: "var(--font-mono)" }}>
+            <div className="flex justify-between py-1"><span>Rows destroyed:</span><span style={{ color: "#f87171" }}>{formatNumber(totalOriginalAffected)}</span></div>
+            <div className="flex justify-between py-1"><span>Cascades:</span><span style={{ color: "#f87171" }}>3 tables</span></div>
+            <div className="flex justify-between py-1"><span>ARR at risk:</span><span style={{ color: "#f87171" }}>{formatCurrency(originalArrRisk)}</span></div>
+            <div className="flex justify-between py-1"><span>Rollback:</span><span style={{ color: "#f87171" }}>Backup restore only</span></div>
           </div>
-        </div>
+        </motion.div>
 
-        {/* Card 2: Recommended Safe Alternative */}
-        <div
+        {/* Safe */}
+        <motion.div
           onClick={() => onToggleAlternative(true)}
-          className={`relative rounded-xl border p-4 cursor-pointer transition-all duration-200 ${
-            isUsingSafer
-              ? "bg-emerald-950/25 border-emerald-500/80 ring-2 ring-emerald-500/40 shadow-[0_0_24px_rgba(16,185,129,0.15)]"
-              : "bg-slate-900/40 border-slate-800/80 opacity-70 hover:opacity-100"
-          }`}
+          className="rounded-xl p-4 cursor-pointer transition-all duration-200"
+          style={{
+            background: isUsingSafer ? "rgba(16,185,129,0.06)" : "rgba(255,255,255,0.015)",
+            border: `1px solid ${isUsingSafer ? "rgba(16,185,129,0.4)" : "rgba(255,255,255,0.06)"}`,
+            boxShadow: isUsingSafer ? "0 0 30px rgba(16,185,129,0.08)" : "none",
+            opacity: !isUsingSafer ? 0.65 : 1,
+          }}
+          whileHover={{ opacity: 1 }}
         >
-          <div className="flex items-center justify-between mb-2.5">
+          <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              <ShieldCheck className="w-4 h-4 text-emerald-400" />
-              <span className="font-mono text-xs font-bold text-emerald-300 uppercase tracking-wider">
+              <ShieldCheck className="w-4 h-4" style={{ color: "#34d399" }} />
+              <span className="text-xs font-bold uppercase tracking-wider"
+                style={{ color: "#34d399", fontFamily: "var(--font-mono)" }}>
                 {alternative.title}
               </span>
             </div>
-            <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center gap-1">
-              <TrendingDown className="w-3 h-3" />
-              Risk: {alternative.riskScore} / 100 (MEDIUM)
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1"
+              style={{ background: "rgba(16,185,129,0.1)", color: "#6ee7b7", border: "1px solid rgba(16,185,129,0.22)", fontFamily: "var(--font-mono)" }}>
+              <TrendingDown className="w-2.5 h-2.5" />
+              {alternative.riskScore}/100
             </span>
           </div>
-
           <div className="mb-3">
-            <SqlViewer
-              sql={alternative.sql}
-              operation="UPDATE"
-              table="users"
-              title="Synthesized Safe SQL"
-              variant="safe"
-            />
+            <SqlViewer sql={alternative.sql} title="Safe Alternative SQL" variant="safe" />
           </div>
-
-          {/* Quick Metrics Table */}
-          <div className="space-y-1.5 text-xs">
-            <div className="flex items-center justify-between py-1 border-b border-slate-800">
-              <span className="text-slate-400">Rows Mutated (Soft-Del):</span>
-              <span className="font-mono font-bold text-emerald-400">
-                {formatNumber(alternative.directRows)} users
-              </span>
-            </div>
-            <div className="flex items-center justify-between py-1 border-b border-slate-800">
-              <span className="text-slate-400">Cascading Deletions:</span>
-              <span className="font-mono font-bold text-emerald-400 flex items-center gap-1">
-                <CheckCircle2 className="w-3.5 h-3.5" /> 0 Cascades (Shielded)
-              </span>
-            </div>
-            <div className="flex items-center justify-between py-1 border-b border-slate-800">
-              <span className="text-slate-400">ARR Revenue Exposure:</span>
-              <span className="font-mono font-bold text-emerald-400">
-                $0.00 ARR Loss (Protected)
-              </span>
-            </div>
-            <div className="flex items-center justify-between py-1">
-              <span className="text-slate-400">Rollback Capability:</span>
-              <span className="text-emerald-400 font-semibold flex items-center gap-1">
-                <Check className="w-3.5 h-3.5" /> 100% Recoverable via SQL
-              </span>
-            </div>
+          <div className="space-y-1 text-[11px]" style={{ color: "#64748b", fontFamily: "var(--font-mono)" }}>
+            <div className="flex justify-between py-1"><span>Rows mutated:</span><span style={{ color: "#34d399" }}>{formatNumber(alternative.directRows)} (soft)</span></div>
+            <div className="flex justify-between py-1"><span>Cascades:</span><span style={{ color: "#34d399" }} className="flex items-center gap-1"><CheckCircle2 className="w-3 h-3" />0 blocked</span></div>
+            <div className="flex justify-between py-1"><span>ARR at risk:</span><span style={{ color: "#34d399" }}>$0.00 protected</span></div>
+            <div className="flex justify-between py-1"><span>Rollback:</span><span style={{ color: "#34d399" }} className="flex items-center gap-1"><Check className="w-3 h-3" />100% via SQL</span></div>
           </div>
-        </div>
+        </motion.div>
       </div>
 
-      {/* Prominent Action Toggle Bar */}
-      <div className="flex items-center justify-between pt-2">
-        <span className="text-xs text-slate-400">
-          {isUsingSafer 
-            ? "✓ BlastShield safe alternative active. Risk reduced by 51 points." 
-            : "⚠️ Original hard deletion selected. 3 dependent cascade branches active."}
-        </span>
+      {/* Metrics comparison table */}
+      <div className="rounded-xl p-4"
+        style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}>
+        <p className="text-[10px] font-bold uppercase tracking-[0.14em] mb-3"
+          style={{ color: "#334155", fontFamily: "var(--font-mono)" }}>
+          Side-by-Side Impact Comparison
+        </p>
+        <MetricRow label="Total rows affected"    danger={formatNumber(totalOriginalAffected)} safe={formatNumber(alternative.directRows)} />
+        <MetricRow label="ARR exposure"           danger={formatCurrency(originalArrRisk)}     safe="$0.00" />
+        <MetricRow label="Cascade deletions"      danger="3 table chains"                      safe="None (shielded)" />
+        <MetricRow label="Reversibility"          danger="Backup restore"                      safe={alternative.reversibility} />
+        <MetricRow label="Risk score"             danger={`${originalRiskScore}/100`}          safe={`${alternative.riskScore}/100`} />
+      </div>
 
-        {!isUsingSafer ? (
-          <button
-            onClick={() => onToggleAlternative(true)}
-            className="min-h-[44px] px-5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 text-xs font-bold transition-all shadow-lg flex items-center gap-2 touch-target"
-          >
-            <Sparkles className="w-4 h-4 text-slate-950" />
-            <span>Apply Safer Alternative (Risk Drops to 34)</span>
-          </button>
-        ) : (
-          <button
-            onClick={() => onToggleAlternative(false)}
-            className="min-h-[44px] px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium transition-colors flex items-center gap-1.5 touch-target"
-          >
-            <RotateCcw className="w-3.5 h-3.5 text-slate-400" />
-            <span>Revert to Original (Dangerous)</span>
-          </button>
-        )}
+      {/* CTA row */}
+      <div className="flex items-center justify-between pt-1">
+        <p className="text-xs" style={{ color: "#475569" }}>
+          {isUsingSafer
+            ? "✓ BlastShield safe alternative active — risk reduced by " + (originalRiskScore - alternative.riskScore) + " points"
+            : "⚠ Original hard deletion selected — 3 cascade branches active"
+          }
+        </p>
+
+        <AnimatePresence mode="wait">
+          {!isUsingSafer ? (
+            <motion.button
+              key="apply"
+              initial={{ opacity: 0, x: 8 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -8 }}
+              onClick={() => onToggleAlternative(true)}
+              className="btn btn-safe"
+              style={{ fontSize: 12, minHeight: 38, padding: "9px 18px" }}
+              whileHover={{ scale: 1.02 }}
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              Apply Safer Alternative
+            </motion.button>
+          ) : (
+            <motion.button
+              key="revert"
+              initial={{ opacity: 0, x: 8 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -8 }}
+              onClick={() => onToggleAlternative(false)}
+              className="btn btn-ghost"
+              style={{ fontSize: 12, minHeight: 38, padding: "9px 16px" }}
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              Revert to Original
+            </motion.button>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );

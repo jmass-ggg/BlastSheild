@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { SimulationStep } from "@/lib/types";
-import { CheckCircle2, ChevronDown, ChevronRight, Clock, Loader2, Sparkles } from "lucide-react";
+import { CheckCircle2, ChevronDown, ChevronRight, Loader2, Sparkles } from "lucide-react";
 
 interface ActionTimelineProps {
   steps: SimulationStep[];
@@ -13,110 +13,114 @@ interface ActionTimelineProps {
 
 export function ActionTimeline({ steps, isSimulating = false }: ActionTimelineProps) {
   const [expandedStep, setExpandedStep] = useState<string | null>(null);
-
-  const toggleExpand = (id: string) => {
-    setExpandedStep(expandedStep === id ? null : id);
-  };
+  const done = steps.filter(s => s.status === "completed").length;
 
   return (
-    <div className="rounded-xl border border-slate-800 bg-[#0b101c] p-3.5 shadow-md">
-      <div className="flex items-center justify-between pb-2.5 mb-2.5 border-b border-slate-800">
+    <div
+      className="rounded-xl overflow-hidden"
+      style={{
+        background: "rgba(255,255,255,0.02)",
+        border: "1px solid rgba(255,255,255,0.07)",
+      }}
+    >
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 py-3 border-b"
+        style={{ borderColor: "rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.02)" }}>
         <div className="flex items-center gap-2">
-          <div className="p-1 rounded-md bg-indigo-500/10 border border-indigo-500/30 text-indigo-400">
-            <Sparkles className="w-3.5 h-3.5" />
+          <div className="w-6 h-6 rounded-md flex items-center justify-center"
+            style={{ background: "rgba(99,102,241,0.1)", border: "1px solid rgba(99,102,241,0.2)" }}>
+            <Sparkles className="w-3.5 h-3.5" style={{ color: "#818cf8" }} />
           </div>
           <div>
-            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-200 font-mono">
+            <h4 className="text-xs font-bold text-white" style={{ fontFamily: "var(--font-mono)" }}>
               Sandbox Simulation Pipeline
             </h4>
-            <p className="text-[11px] text-slate-400">
-              8 automated safety verification steps executed in isolation
+            <p className="text-[10px]" style={{ color: "#475569" }}>
+              {done}/{steps.length} steps · 100% isolated · no prod touch
             </p>
           </div>
         </div>
-        
-        <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 font-bold">
-          100% ISOLATED
-        </span>
+        <span className="tag tag-green text-[9px]">ISOLATED</span>
       </div>
 
-      <div className="space-y-1.5">
+      {/* Steps */}
+      <div className="divide-y divide-white/[0.04]">
         {steps.map((step, idx) => {
           const isCompleted = step.status === "completed";
-          const isRunning = step.status === "running" || (isSimulating && idx === steps.length - 1);
-          const isExpanded = expandedStep === step.id;
+          const isRunning   = step.status === "running" || (isSimulating && idx === steps.length - 1);
+          const isExpanded  = expandedStep === step.id;
 
           return (
-            <div
-              key={step.id}
-              className={`rounded-lg border transition-all duration-150 overflow-hidden ${
-                isCompleted
-                  ? "bg-slate-900/60 border-slate-800 hover:border-slate-700"
-                  : isRunning
-                  ? "bg-indigo-950/40 border-indigo-500/50 shadow-sm"
-                  : "bg-slate-950/40 border-slate-900 opacity-60"
-              }`}
-            >
-              <div
-                onClick={() => toggleExpand(step.id)}
-                className="flex items-center justify-between p-2 cursor-pointer select-none min-h-[36px]"
+            <div key={step.id}>
+              <button
+                onClick={() => setExpandedStep(isExpanded ? null : step.id)}
+                className="w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-white/[0.02]"
+                style={{ minHeight: 44 }}
               >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="flex-shrink-0">
-                    {isCompleted ? (
-                      <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                    ) : isRunning ? (
-                      <Loader2 className="w-4 h-4 text-indigo-400 animate-spin" />
-                    ) : (
-                      <div className="w-4 h-4 rounded-full border border-slate-700 flex items-center justify-center">
-                        <span className="w-1.5 h-1.5 rounded-full bg-slate-600" />
-                      </div>
+                {/* Status icon */}
+                <div className="flex-shrink-0">
+                  {isCompleted
+                    ? <CheckCircle2 className="w-3.5 h-3.5" style={{ color: "#10b981" }} />
+                    : isRunning
+                    ? <Loader2 className="w-3.5 h-3.5 animate-spin" style={{ color: "#818cf8" }} />
+                    : (
+                      <div className="w-3.5 h-3.5 rounded-full border"
+                        style={{ borderColor: "rgba(255,255,255,0.08)" }} />
+                    )
+                  }
+                </div>
+
+                {/* Content */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold"
+                      style={{ color: isCompleted ? "#e2e8f0" : isRunning ? "#c7d2fe" : "#475569" }}>
+                      {idx + 1}. {step.title}
+                    </span>
+                    {step.timestamp && (
+                      <span className="text-[10px]"
+                        style={{ color: "#334155", fontFamily: "var(--font-mono)" }}>
+                        {step.timestamp}
+                      </span>
                     )}
                   </div>
-
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-slate-200">
-                        {idx + 1}. {step.title}
-                      </span>
-                      {step.timestamp && (
-                        <span className="text-[10px] text-slate-500 font-mono">
-                          {step.timestamp}
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-[11px] text-slate-400 truncate">
-                      {step.subtitle}
-                    </p>
-                  </div>
+                  <p className="text-[11px] truncate mt-0.5" style={{ color: "#475569" }}>
+                    {step.subtitle}
+                  </p>
                 </div>
 
-                <div className="flex items-center gap-1 text-slate-500 hover:text-slate-300">
-                  {isExpanded ? (
-                    <ChevronDown className="w-3.5 h-3.5" />
-                  ) : (
-                    <ChevronRight className="w-3.5 h-3.5" />
-                  )}
-                </div>
-              </div>
+                {step.details && (
+                  <motion.div
+                    animate={{ rotate: isExpanded ? 90 : 0 }}
+                    transition={{ duration: 0.15 }}
+                  >
+                    <ChevronRight className="w-3.5 h-3.5 flex-shrink-0" style={{ color: "#334155" }} />
+                  </motion.div>
+                )}
+              </button>
 
-              {/* Details Drawer */}
               <AnimatePresence>
                 {isExpanded && step.details && (
                   <motion.div
                     initial={{ height: 0, opacity: 0 }}
                     animate={{ height: "auto", opacity: 1 }}
                     exit={{ height: 0, opacity: 0 }}
-                    className="px-3 pb-2.5 pt-1 border-t border-slate-800/80 bg-black/30 text-xs"
+                    style={{ overflow: "hidden" }}
                   >
-                    <div className="rounded bg-slate-950 p-2 border border-slate-800 font-mono text-[11px] text-slate-300">
-                      {typeof step.details === "string" ? (
-                        step.details
-                      ) : (
-                        <pre className="overflow-x-auto text-emerald-400">
-                          {JSON.stringify(step.details, null, 2)}
-                        </pre>
-                      )}
+                    <div className="px-4 pb-3 pt-1 border-t"
+                      style={{ borderColor: "rgba(255,255,255,0.05)" }}>
+                      <div className="rounded-lg p-2.5 text-[11px]"
+                        style={{
+                          background: "rgba(0,0,0,0.3)",
+                          border: "1px solid rgba(255,255,255,0.06)",
+                          fontFamily: "var(--font-mono)",
+                          color: "#10b981",
+                        }}>
+                        {typeof step.details === "string"
+                          ? step.details
+                          : <pre className="overflow-x-auto">{JSON.stringify(step.details, null, 2)}</pre>
+                        }
+                      </div>
                     </div>
                   </motion.div>
                 )}

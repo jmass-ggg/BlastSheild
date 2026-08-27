@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { RiskBreakdown, RiskLevel } from "@/lib/types";
 import { getRiskColorClass } from "@/lib/utils";
-import { Info, ShieldAlert, Sparkles, X } from "lucide-react";
+import { Info, ShieldAlert, Sparkles, X, TrendingUp } from "lucide-react";
 
 interface RiskGaugeProps {
   score: number;
@@ -13,217 +13,217 @@ interface RiskGaugeProps {
   size?: number;
 }
 
-export function RiskGauge({ score, level, breakdown, size = 120 }: RiskGaugeProps) {
+export function RiskGauge({ score, level, breakdown, size = 130 }: RiskGaugeProps) {
   const [showDetails, setShowDetails] = useState(false);
   const styles = getRiskColorClass(level);
-  
+
   const strokeWidth = 9;
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
-  const strokeDashoffset = circumference - (score / 100) * circumference * 0.75;
-  const rotation = 135;
+  // 270° arc (¾ of circle), starting from bottom-left
+  const arcLength = circumference * 0.75;
+  const strokeDashoffset = arcLength - (score / 100) * arcLength;
+  const rotation = 135; // rotates SVG so arc starts at bottom-left
 
-  // Keyboard Escape listener to dismiss modal
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        setShowDetails(false);
-      }
-    };
-    if (showDetails) {
-      window.addEventListener("keydown", handleKeyDown);
-    }
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") setShowDetails(false); };
+    if (showDetails) window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
   }, [showDetails]);
 
   return (
     <div className="relative flex flex-col items-center">
-      <div 
-        className="relative flex items-center justify-center cursor-pointer group select-none"
+      {/* Gauge */}
+      <button
+        className="relative flex items-center justify-center group select-none outline-none"
+        style={{ width: size, height: size }}
         onClick={() => setShowDetails(true)}
-        title="Click to view 5-factor risk score formula breakdown"
-        role="button"
-        tabIndex={0}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            setShowDetails(true);
-          }
-        }}
+        aria-label={`Risk score ${score}/100 — click to see breakdown`}
       >
-        {/* Subtle Ambient Glow behind gauge */}
-        <div 
-          className="absolute inset-0 rounded-full blur-xl opacity-30 transition-all duration-700 pointer-events-none"
+        {/* Ambient glow */}
+        <div
+          className="absolute inset-0 rounded-full blur-2xl opacity-25 pointer-events-none transition-opacity duration-700 group-hover:opacity-40"
           style={{ backgroundColor: styles.accent }}
         />
 
-        <svg
-          width={size}
-          height={size}
-          className="transform -rotate-90 transition-all duration-700"
-        >
-          {/* Background Track */}
+        <svg width={size} height={size} className="absolute">
+          {/* Track */}
           <circle
-            cx={size / 2}
-            cy={size / 2}
-            r={radius}
-            stroke="rgba(255, 255, 255, 0.08)"
-            strokeWidth={strokeWidth}
+            cx={size / 2} cy={size / 2} r={radius}
+            stroke="rgba(255,255,255,0.06)" strokeWidth={strokeWidth}
             fill="none"
-            strokeDasharray={`${circumference * 0.75} ${circumference * 0.25}`}
+            strokeDasharray={`${arcLength} ${circumference - arcLength}`}
             strokeDashoffset={0}
             strokeLinecap="round"
             style={{ transform: `rotate(${rotation}deg)`, transformOrigin: "50% 50%" }}
           />
-
-          {/* Animated Arc */}
+          {/* Progress arc */}
           <motion.circle
-            cx={size / 2}
-            cy={size / 2}
-            r={radius}
+            cx={size / 2} cy={size / 2} r={radius}
             stroke={styles.accent}
             strokeWidth={strokeWidth}
             fill="none"
-            strokeDasharray={`${circumference * 0.75} ${circumference * 0.25}`}
-            initial={{ strokeDashoffset: circumference }}
+            strokeDasharray={`${arcLength} ${circumference - arcLength}`}
+            initial={{ strokeDashoffset: arcLength }}
             animate={{ strokeDashoffset }}
-            transition={{ duration: 0.6, ease: "easeOut" }}
+            transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
             strokeLinecap="round"
-            style={{ 
-              transform: `rotate(${rotation}deg)`, 
+            style={{
+              transform: `rotate(${rotation}deg)`,
               transformOrigin: "50% 50%",
-              filter: `drop-shadow(0 0 5px ${styles.accent})`
+              filter: `drop-shadow(0 0 8px ${styles.accent}) drop-shadow(0 0 16px ${styles.accent}60)`,
             }}
           />
         </svg>
 
-        {/* Center Score Readout */}
-        <div className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none">
-          <motion.span 
+        {/* Score readout */}
+        <div className="relative flex flex-col items-center justify-center text-center z-10 pointer-events-none">
+          <motion.span
             key={score}
-            initial={{ scale: 0.75, opacity: 0 }}
+            initial={{ scale: 0.7, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            transition={{ type: "spring", stiffness: 350, damping: 25 }}
-            className="text-2xl lg:text-3xl font-black tracking-tight text-white font-mono"
+            transition={{ type: "spring", stiffness: 320, damping: 22 }}
+            className="font-black leading-none"
+            style={{
+              fontSize: size * 0.24,
+              color: styles.accent,
+              fontFamily: "var(--font-mono)",
+              filter: `drop-shadow(0 0 6px ${styles.accent}80)`,
+            }}
           >
             {score}
           </motion.span>
-          <span className="text-[11px] font-bold text-slate-400 font-mono">
-            / 100
+          <span className="font-bold tracking-[0.1em] mt-0.5"
+            style={{ fontSize: size * 0.08, color: `${styles.accent}99`, fontFamily: "var(--font-mono)" }}>
+            /100
+          </span>
+          <span className={`text-[9px] font-black tracking-[0.14em] px-2 py-0.5 rounded-full mt-1 ${styles.badge}`}
+            style={{ fontFamily: "var(--font-mono)" }}>
+            {level}
           </span>
         </div>
 
-        {/* Quick info trigger badge */}
-        <div className="absolute bottom-0 right-0 bg-slate-900 border border-slate-700 rounded-full p-1 text-slate-400 group-hover:text-white transition-colors shadow-md">
-          <Info className="w-3.5 h-3.5" />
+        {/* Info icon */}
+        <div className="absolute bottom-1 right-1 w-6 h-6 rounded-full flex items-center justify-center opacity-40 group-hover:opacity-80 transition-opacity"
+          style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}>
+          <Info className="w-3 h-3" style={{ color: "#94a3b8" }} />
         </div>
-      </div>
+      </button>
 
-      <div className="mt-2 text-center">
-        <button 
-          onClick={() => setShowDetails(true)}
-          className="text-xs font-semibold text-slate-400 hover:text-slate-200 underline decoration-slate-600 underline-offset-4 transition-colors min-h-[32px] flex items-center justify-center"
-        >
-          View 5-Factor Formula
-        </button>
-      </div>
+      <button
+        onClick={() => setShowDetails(true)}
+        className="mt-2 text-[11px] font-medium underline decoration-dotted underline-offset-3 transition-colors"
+        style={{ color: "#475569" }}
+      >
+        5-factor formula
+      </button>
 
-      {/* 5-Factor Breakdown Popover Modal */}
+      {/* Breakdown Modal */}
       <AnimatePresence>
         {showDetails && breakdown && (
-          <div 
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md"
-            onClick={(e) => {
-              if (e.target === e.currentTarget) {
-                setShowDetails(false);
-              }
-            }}
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            style={{ background: "rgba(0,0,0,0.8)", backdropFilter: "blur(16px)" }}
+            onClick={(e) => e.target === e.currentTarget && setShowDetails(false)}
           >
             <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 12 }}
+              initial={{ opacity: 0, scale: 0.92, y: 16 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 12 }}
-              transition={{ duration: 0.2 }}
-              className="relative w-full max-w-lg bg-[#0f172a] border border-slate-700 rounded-2xl p-6 shadow-2xl overflow-hidden"
-              onClick={(e) => e.stopPropagation()}
+              exit={{ opacity: 0, scale: 0.92, y: 16 }}
+              transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+              className="relative w-full max-w-lg rounded-2xl p-6 overflow-hidden"
+              style={{
+                background: "rgba(6,9,18,0.95)",
+                border: "1px solid rgba(255,255,255,0.09)",
+                boxShadow: "0 24px 80px rgba(0,0,0,0.7)",
+              }}
+              onClick={e => e.stopPropagation()}
             >
+              {/* Top shine */}
+              <div className="absolute top-0 left-0 right-0 h-px"
+                style={{ background: "linear-gradient(90deg, transparent, rgba(99,102,241,0.5), transparent)" }} />
+
               {/* Header */}
-              <div className="flex items-center justify-between pb-4 border-b border-slate-800">
+              <div className="flex items-center justify-between pb-4 border-b"
+                style={{ borderColor: "rgba(255,255,255,0.07)" }}>
                 <div className="flex items-center gap-3">
                   <div className={`p-2.5 rounded-xl border ${styles.badge}`}>
                     <ShieldAlert className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="text-base font-bold text-white flex items-center gap-2">
+                    <h3 className="text-sm font-black text-white flex items-center gap-2">
                       Deterministic Risk Formula
-                      <span className={`text-xs px-2 py-0.5 rounded font-mono font-bold border ${styles.badge}`}>
-                        {score} / 100
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold border ${styles.badge}`}
+                        style={{ fontFamily: "var(--font-mono)" }}>
+                        {score}/100
                       </span>
                     </h3>
-                    <p className="text-xs text-slate-400">
-                      Calculated deterministically without LLM hallucination
+                    <p className="text-[11px]" style={{ color: "#475569" }}>
+                      No LLM — pure code calculation
                     </p>
                   </div>
                 </div>
-                
-                {/* 44x44px accessible Close button */}
                 <button
                   onClick={() => setShowDetails(false)}
-                  className="w-11 h-11 flex items-center justify-center text-slate-400 hover:text-white rounded-xl hover:bg-slate-800 transition-colors touch-target"
-                  aria-label="Close formula modal"
+                  className="w-9 h-9 flex items-center justify-center rounded-xl transition-colors"
+                  style={{ color: "#64748b" }}
+                  aria-label="Close"
                 >
-                  <X className="w-5 h-5" />
+                  <X className="w-4 h-4" />
                 </button>
               </div>
 
-              {/* Factors list */}
-              <div className="mt-5 space-y-3">
+              {/* Factors */}
+              <div className="mt-4 space-y-3">
                 {[
                   breakdown.operationSeverity,
                   breakdown.rowsAffected,
                   breakdown.cascadeImpact,
                   breakdown.businessCriticalData,
                   breakdown.reversibility,
-                ].map((factor, idx) => (
-                  <div key={idx} className="bg-slate-900/80 border border-slate-800 rounded-xl p-3.5">
-                    <div className="flex items-center justify-between text-xs mb-1.5">
-                      <span className="font-semibold text-slate-200 text-sm">{factor.label}</span>
-                      <span className="font-mono font-bold text-slate-300">
-                        {factor.score} / {factor.max} pts
-                      </span>
+                ].map((factor, idx) => {
+                  const ratio = factor.score / factor.max;
+                  const barColor = ratio > 0.75 ? "#ef4444" : ratio > 0.4 ? "#f59e0b" : "#10b981";
+                  return (
+                    <div key={idx}
+                      className="rounded-xl p-3.5"
+                      style={{
+                        background: "rgba(255,255,255,0.02)",
+                        border: "1px solid rgba(255,255,255,0.06)",
+                      }}>
+                      <div className="flex items-center justify-between text-xs mb-2">
+                        <span className="font-semibold text-white">{factor.label}</span>
+                        <span style={{ color: barColor, fontFamily: "var(--font-mono)", fontWeight: 700 }}>
+                          {factor.score} / {factor.max}
+                        </span>
+                      </div>
+                      <div className="progress-track mb-2">
+                        <motion.div
+                          className="progress-fill"
+                          initial={{ width: 0 }}
+                          animate={{ width: `${ratio * 100}%` }}
+                          transition={{ duration: 0.5, delay: idx * 0.06, ease: [0.16, 1, 0.3, 1] }}
+                          style={{ background: barColor, boxShadow: `0 0 6px ${barColor}60` }}
+                        />
+                      </div>
+                      <p className="text-[11px] leading-relaxed" style={{ color: "#475569" }}>
+                        {factor.desc}
+                      </p>
                     </div>
-                    {/* Progress bar */}
-                    <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden mb-2">
-                      <motion.div
-                        initial={{ width: 0 }}
-                        animate={{ width: `${(factor.score / factor.max) * 100}%` }}
-                        transition={{ duration: 0.4, delay: idx * 0.05 }}
-                        className="h-full rounded-full"
-                        style={{
-                          backgroundColor:
-                            factor.score / factor.max > 0.75
-                              ? "#ef4444"
-                              : factor.score / factor.max > 0.4
-                              ? "#f59e0b"
-                              : "#10b981",
-                        }}
-                      />
-                    </div>
-                    <p className="text-xs text-slate-400 leading-relaxed">
-                      {factor.desc}
-                    </p>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
-              <div className="mt-6 pt-4 border-t border-slate-800 flex items-center justify-between">
-                <span className="flex items-center gap-1.5 text-xs text-slate-400 font-mono">
-                  <Sparkles className="w-4 h-4 text-indigo-400" />
-                  Deterministic Code Engine
+              <div className="mt-5 pt-4 flex items-center justify-between border-t"
+                style={{ borderColor: "rgba(255,255,255,0.06)" }}>
+                <span className="text-[11px] flex items-center gap-1.5" style={{ color: "#475569" }}>
+                  <Sparkles className="w-3.5 h-3.5" style={{ color: "#818cf8" }} />
+                  Deterministic engine — no hallucination
                 </span>
                 <button
                   onClick={() => setShowDetails(false)}
-                  className="min-h-[44px] px-5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold transition-colors touch-target"
-                >
+                  className="btn btn-ghost text-xs"
+                  style={{ minHeight: 38, padding: "8px 16px" }}>
                   Close
                 </button>
               </div>
