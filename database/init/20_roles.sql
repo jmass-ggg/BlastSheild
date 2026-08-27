@@ -9,10 +9,18 @@ BEGIN
         CREATE ROLE blastshield_executor LOGIN PASSWORD 'executor_demo_password'
             NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT;
     END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'blastshield_app') THEN
+        CREATE ROLE blastshield_app LOGIN PASSWORD 'app_demo_password'
+            NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT;
+    END IF;
 END
 $roles$;
 
-GRANT CONNECT ON DATABASE blastshield TO blastshield_analyzer, blastshield_executor;
+GRANT CONNECT ON DATABASE blastshield
+    TO blastshield_analyzer, blastshield_executor, blastshield_app;
+REVOKE TEMPORARY ON DATABASE blastshield FROM PUBLIC;
+REVOKE CREATE ON SCHEMA public FROM PUBLIC;
 
 GRANT USAGE ON SCHEMA public TO blastshield_analyzer;
 GRANT SELECT ON ALL TABLES IN SCHEMA public TO blastshield_analyzer;
@@ -29,3 +37,5 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA public
 ALTER DEFAULT PRIVILEGES IN SCHEMA public
     GRANT USAGE, SELECT ON SEQUENCES TO blastshield_executor;
 
+GRANT USAGE ON SCHEMA blastshield_control TO blastshield_app;
+GRANT SELECT, INSERT, UPDATE ON blastshield_control.analyses TO blastshield_app;

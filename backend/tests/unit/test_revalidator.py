@@ -1,5 +1,7 @@
 from types import SimpleNamespace
 
+import pytest
+
 from app.db.models import AnalysisRecord
 from app.services.revalidator import Revalidator
 
@@ -28,3 +30,11 @@ def test_revalidation_matches_identical_fingerprint() -> None:
 
 def test_revalidation_rejects_changed_fingerprint() -> None:
     assert Revalidator(FakePipeline("new")).revalidate(record("old")) is False
+
+
+def test_revalidation_rejects_schema_metadata_mismatch() -> None:
+    item = record("same")
+    item.target_schema = "audit"
+
+    with pytest.raises(ValueError, match="metadata"):
+        Revalidator(FakePipeline("same")).revalidate(item)

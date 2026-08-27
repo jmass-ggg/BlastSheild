@@ -1,0 +1,2 @@
+"""BlastShield MCP HTTP bridge."""
+
