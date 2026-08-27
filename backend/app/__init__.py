@@ -1,0 +1,2 @@
+"""BlastShield backend application."""
+
