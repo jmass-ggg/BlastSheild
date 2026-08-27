@@ -17,11 +17,13 @@ export function ModifySqlModal({
   currentSql,
   onApplySql,
 }: ModifySqlModalProps) {
+  const [prevSql, setPrevSql] = useState(currentSql);
   const [editedSql, setEditedSql] = useState(currentSql);
 
-  useEffect(() => {
+  if (prevSql !== currentSql) {
+    setPrevSql(currentSql);
     setEditedSql(currentSql);
-  }, [currentSql]);
+  }
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {

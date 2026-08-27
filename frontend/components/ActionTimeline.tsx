@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { SimulationStep } from "@/lib/types";
-import { CheckCircle2, ChevronDown, ChevronRight, Loader2, Sparkles } from "lucide-react";
+import { CheckCircle2, ChevronRight, Loader2, Sparkles } from "lucide-react";
 
 interface ActionTimelineProps {
   steps: SimulationStep[];

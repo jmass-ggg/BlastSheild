@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { RiskBreakdown, RiskLevel } from "@/lib/types";
 import { getRiskColorClass } from "@/lib/utils";
-import { Info, ShieldAlert, Sparkles, X, TrendingUp } from "lucide-react";
+import { Info, ShieldAlert, Sparkles, X } from "lucide-react";
 
 interface RiskGaugeProps {
   score: number;

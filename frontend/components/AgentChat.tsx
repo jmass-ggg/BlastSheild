@@ -1,11 +1,10 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import { AnalysisRecord } from "@/lib/types";
 import { ActionTimeline } from "./ActionTimeline";
 import { SqlViewer } from "./SqlViewer";
-import { Bot, User, Send, ShieldAlert, Sparkles, Terminal } from "lucide-react";
+import { Bot, User, Send, ShieldAlert } from "lucide-react";
 
 interface AgentChatProps {
   analysis: AnalysisRecord;

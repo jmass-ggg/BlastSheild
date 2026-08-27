@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Check, Copy, ShieldAlert, Shield } from "lucide-react";
+import { Check, Copy, ShieldAlert } from "lucide-react";
 import { OperationType } from "@/lib/types";
 
 interface SqlViewerProps {

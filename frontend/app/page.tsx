@@ -841,9 +841,27 @@ function ExceptionDialog({
   );
 }
 
-export default function BlastShieldDashboard() {
-  const [scenarioId, setScenarioId] = useState("inactive_users_delete");
-  const [analysis, setAnalysis] = useState<AnalysisRecord>(getInitialPrimaryAnalysis());
+export default function BlastShieldDashboard({
+  initialScenarioId,
+}: {
+  initialScenarioId?: string;
+} = {}) {
+  const initialSelected = useMemo(() => {
+    if (initialScenarioId) {
+      const match = DEMO_SCENARIOS.find((s) => s.id === initialScenarioId);
+      if (match) return match;
+    }
+    return DEMO_SCENARIOS[0];
+  }, [initialScenarioId]);
+
+  const [scenarioId, setScenarioId] = useState(initialSelected.id);
+  const [analysis, setAnalysis] = useState<AnalysisRecord>(() => {
+    if (initialScenarioId) {
+      const match = DEMO_SCENARIOS.find((s) => s.id === initialScenarioId);
+      if (match) return generateAnalysisForScenario(match);
+    }
+    return getInitialPrimaryAnalysis();
+  });
   const [safePlanActive, setSafePlanActive] = useState(false);
   const [evidenceView, setEvidenceView] = useState<EvidenceView>("topology");
   const [simulating, setSimulating] = useState(false);
@@ -856,6 +874,20 @@ export default function BlastShieldDashboard() {
   const [exceptionOpen, setExceptionOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const simulationTimer = useRef<number | null>(null);
+
+  const [prevInitialId, setPrevInitialId] = useState(initialScenarioId);
+
+  if (initialScenarioId !== prevInitialId) {
+    setPrevInitialId(initialScenarioId);
+    if (initialScenarioId) {
+      const target = DEMO_SCENARIOS.find((s) => s.id === initialScenarioId);
+      if (target) {
+        setScenarioId(target.id);
+        setAnalysis(generateAnalysisForScenario(target));
+        setSafePlanActive(false);
+      }
+    }
+  }
 
   const activeScenario = useMemo(
     () => DEMO_SCENARIOS.find((scenario) => scenario.id === scenarioId) ?? DEMO_SCENARIOS[0],

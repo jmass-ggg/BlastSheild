@@ -3,7 +3,7 @@
 import React from "react";
 import { TableRowDiff } from "@/lib/types";
 import { formatNumber } from "@/lib/utils";
-import { Database, AlertTriangle, ShieldCheck, ArrowRight } from "lucide-react";
+import { Database, ShieldCheck, ArrowRight } from "lucide-react";
 
 interface BeforeAfterTableProps {
   diffs: TableRowDiff[];
