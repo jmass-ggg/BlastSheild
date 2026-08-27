@@ -43,3 +43,7 @@ class AnalysisQueryTimeoutError(BlastShieldError):
             status_code=503,
         )
 
+
+class NotFoundError(BlastShieldError):
+    def __init__(self, message: str = "Analysis not found.") -> None:
+        super().__init__("NOT_FOUND", message, status_code=404)

@@ -18,13 +18,21 @@ class Settings(BaseSettings):
         "postgresql+psycopg://blastshield_analyzer:analyzer_demo_password"
         "@localhost:5432/blastshield"
     )
+    app_database_url: str = (
+        "postgresql+psycopg://blastshield_app:app_demo_password"
+        "@localhost:5432/blastshield"
+    )
     cors_origins: list[str] = Field(default_factory=lambda: ["http://localhost:3000"])
     statement_timeout_ms: int = Field(default=5_000, ge=1, le=60_000)
     lock_timeout_ms: int = Field(default=1_000, ge=1, le=60_000)
     fk_max_depth: int = Field(default=3, ge=1, le=10)
+    exact_count_max_cost: float = Field(default=100_000, ge=0)
+    business_subscription_table: str = "subscriptions"
+    business_subscription_status_column: str = "status"
+    business_subscription_active_value: str = "active"
+    business_subscription_price_column: str = "monthly_price"
 
 
 @lru_cache
 def get_settings() -> Settings:
     return Settings()
-
