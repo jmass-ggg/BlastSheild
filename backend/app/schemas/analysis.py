@@ -1,4 +1,10 @@
-from pydantic import BaseModel
+import uuid
+
+from pydantic import BaseModel, Field
+
+from app.schemas.graph import ReportGraph
+from app.schemas.impact import BusinessImpact, DependencyImpact, ImpactSummary
+from app.schemas.risk import RiskLevel, RiskReport
 
 
 class ParsedSQLView(BaseModel):
@@ -11,8 +17,40 @@ class ParsedSQLView(BaseModel):
     normalized_sql: str
 
 
-class DirectImpact(BaseModel):
-    table: str
-    rows: int
-    measurement: str = "EXACT"
+class AnalyzeRequest(BaseModel):
+    sql: str = Field(min_length=1)
+    source: str = Field(default="ui", min_length=1, max_length=100)
+    reason: str | None = Field(default=None, max_length=2_000)
 
+
+class ActionReport(BaseModel):
+    operation: str
+    table: str
+    has_where: bool
+
+
+class SaferAlternative(BaseModel):
+    available: bool
+    sql: str | None = None
+    risk_score: int | None = None
+    risk_level: RiskLevel | None = None
+
+
+class TimelineItem(BaseModel):
+    key: str
+    label: str
+    status: str
+
+
+class AnalysisResponse(BaseModel):
+    analysis_id: uuid.UUID
+    status: str
+    action: ActionReport
+    impact: ImpactSummary
+    dependencies: list[DependencyImpact]
+    business_impact: BusinessImpact
+    risk: RiskReport
+    graph: ReportGraph
+    safer_alternative: SaferAlternative
+    requires_approval: bool
+    timeline: list[TimelineItem]

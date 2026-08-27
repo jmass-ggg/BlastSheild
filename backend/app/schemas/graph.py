@@ -59,3 +59,21 @@ class ForeignKeyGraph(BaseModel):
     edges: list[GraphEdge] = Field(default_factory=list)
     paths: list[DependencyPath] = Field(default_factory=list)
 
+
+class ReportGraphNode(BaseModel):
+    id: str
+    table: str
+    rows: int
+    depth: int
+
+
+class ReportGraphEdge(BaseModel):
+    id: str
+    source: str
+    target: str
+    on_delete: str
+
+
+class ReportGraph(BaseModel):
+    nodes: list[ReportGraphNode] = Field(default_factory=list)
+    edges: list[ReportGraphEdge] = Field(default_factory=list)
