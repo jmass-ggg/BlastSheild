@@ -78,7 +78,6 @@ def build_fk_graph(
                     parent_column=relationship.parent_column,
                     child_column=relationship.child_column,
                     on_delete=relationship.on_delete,
-                    on_update=relationship.on_update,
                 ),
             )
 
@@ -107,4 +106,3 @@ def build_fk_graph(
         edges=sorted(graph_edges.values(), key=lambda edge: edge.id),
         paths=sorted(paths, key=lambda path: (path.depth, path.tables)),
     )
-

@@ -18,7 +18,6 @@ def relationship(
         child_table=child,
         child_column=f"{parent.rstrip('s')}_id",
         on_delete=on_delete,
-        on_update="NO ACTION",
     )
 
 
@@ -84,4 +83,3 @@ def test_preserves_fk_delete_behavior() -> None:
     )
 
     assert graph.edges[0].on_delete == "RESTRICT"
-

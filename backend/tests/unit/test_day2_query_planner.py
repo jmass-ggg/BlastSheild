@@ -21,7 +21,6 @@ def test_builds_depth_two_correlated_count_and_qualifies_root_predicate() -> Non
                 child_table="orders",
                 child_column="user_id",
                 on_delete="CASCADE",
-                on_update="NO ACTION",
             ),
             ForeignKeyRelationship(
                 constraint_name="payments_order_id_fkey",
@@ -32,7 +31,6 @@ def test_builds_depth_two_correlated_count_and_qualifies_root_predicate() -> Non
                 child_table="payments",
                 child_column="order_id",
                 on_delete="CASCADE",
-                on_update="NO ACTION",
             ),
         ],
     )
@@ -46,4 +44,3 @@ def test_builds_depth_two_correlated_count_and_qualifies_root_predicate() -> Non
     assert "t2.order_id = t1.id" in query
     assert "t1.user_id = t0.id" in query
     assert "WHERE t0.id < 20" in query
-

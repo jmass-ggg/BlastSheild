@@ -66,13 +66,6 @@ FOREIGN_KEYS_QUERY = text(
             WHEN 'n' THEN 'SET NULL'
             WHEN 'd' THEN 'SET DEFAULT'
         END AS on_delete,
-        CASE con.confupdtype
-            WHEN 'a' THEN 'NO ACTION'
-            WHEN 'r' THEN 'RESTRICT'
-            WHEN 'c' THEN 'CASCADE'
-            WHEN 'n' THEN 'SET NULL'
-            WHEN 'd' THEN 'SET DEFAULT'
-        END AS on_update,
         key_position AS column_position
     FROM pg_catalog.pg_constraint AS con
     JOIN pg_catalog.pg_class AS child ON child.oid = con.conrelid
@@ -91,4 +84,3 @@ FOREIGN_KEYS_QUERY = text(
     ORDER BY con.conname, key_position
     """
 )
-

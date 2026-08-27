@@ -11,9 +11,6 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    app_name: str = "BlastShield"
-    environment: str = "development"
-    api_prefix: str = "/api/v1"
     analysis_database_url: str = (
         "postgresql+psycopg://blastshield_analyzer:analyzer_demo_password"
         "@localhost:5432/blastshield"

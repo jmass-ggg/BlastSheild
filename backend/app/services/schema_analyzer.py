@@ -62,10 +62,8 @@ def discover_schema(schema: str = "public", engine: Engine | None = None) -> Sch
             child_table=row["child_table"],
             child_column=row["child_column"],
             on_delete=row["on_delete"],
-            on_update=row["on_update"],
         )
         for row in foreign_key_rows
     ]
 
     return SchemaMetadata(tables=tables, foreign_keys=foreign_keys)
-

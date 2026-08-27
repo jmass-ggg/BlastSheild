@@ -19,9 +19,10 @@ from app.core.logging import configure_logging
 configure_logging()
 settings = get_settings()
 logger = logging.getLogger(__name__)
+API_PREFIX = "/api/v1"
 
 app = FastAPI(
-    title=settings.app_name,
+    title="BlastShield",
     version="0.4.0",
     description="BlastShield destructive SQL impact analysis gateway",
 )
@@ -32,21 +33,21 @@ app.add_middleware(
     allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["Content-Type", "Authorization"],
 )
-app.include_router(health_router, prefix=settings.api_prefix)
-app.include_router(analyze_router, prefix=settings.api_prefix)
-app.include_router(analyses_router, prefix=settings.api_prefix)
-app.include_router(approvals_router, prefix=settings.api_prefix)
-app.include_router(execution_router, prefix=settings.api_prefix)
+app.include_router(health_router, prefix=API_PREFIX)
+app.include_router(analyze_router, prefix=API_PREFIX)
+app.include_router(analyses_router, prefix=API_PREFIX)
+app.include_router(approvals_router, prefix=API_PREFIX)
+app.include_router(execution_router, prefix=API_PREFIX)
 
 
 @app.exception_handler(BlastShieldError)
 async def blastshield_error_handler(
     _request: Request, error: BlastShieldError
 ) -> JSONResponse:
-    body: dict[str, object] = {"code": error.code, "message": error.message}
-    if error.details:
-        body["details"] = error.details
-    return JSONResponse(status_code=error.status_code, content=body)
+    return JSONResponse(
+        status_code=error.status_code,
+        content={"code": error.code, "message": error.message},
+    )
 
 
 @app.exception_handler(RequestValidationError)
