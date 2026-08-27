@@ -3,7 +3,6 @@ import uuid
 from sqlalchemy import Engine
 
 from app.core.config import Settings, get_settings
-from app.core.errors import InvalidSQLError
 from app.repositories.analysis_repository import AnalysisRepository
 from app.schemas.analysis import (
     ActionReport,
@@ -13,13 +12,9 @@ from app.schemas.analysis import (
 )
 from app.schemas.graph import ReportGraph, ReportGraphEdge, ReportGraphNode
 from app.schemas.impact import ImpactSummary
-from app.services.business_impact import calculate_business_impact
-from app.services.fingerprint import analysis_fingerprint
-from app.services.fk_graph import build_fk_graph
-from app.services.impact_counter import count_dependency_impacts, count_direct_impact
+from app.services.analysis_pipeline import AnalysisPipeline
 from app.services.risk_engine import calculate_risk
 from app.services.safer_alternative import generate_safer_alternative
-from app.services.schema_analyzer import discover_schema
 from app.services.sql_parser import parse_sql
 
 
@@ -30,10 +25,14 @@ class BlastShieldAnalyzer:
         analysis_engine: Engine | None = None,
         repository: AnalysisRepository | None = None,
         settings: Settings | None = None,
+        pipeline: AnalysisPipeline | None = None,
     ) -> None:
-        self._analysis_engine = analysis_engine
         self._repository = repository or AnalysisRepository()
-        self._settings = settings or get_settings()
+        selected_settings = settings or get_settings()
+        self._pipeline = pipeline or AnalysisPipeline(
+            analysis_engine=analysis_engine,
+            settings=selected_settings,
+        )
 
     def analyze(self, request: AnalyzeRequest) -> AnalysisResponse:
         parsed = parse_sql(request.sql)
@@ -43,45 +42,21 @@ class BlastShieldAnalyzer:
             original_sql=request.sql,
             normalized_sql=parsed.normalized_sql,
             operation=parsed.operation,
+            target_schema=parsed.schema_name,
             target_table=parsed.table,
             source=request.source,
             reason=request.reason,
         )
 
         try:
-            metadata = discover_schema(parsed.schema_name, self._analysis_engine)
-            target_metadata = next(
-                (
-                    table
-                    for table in metadata.tables
-                    if table.schema_name == parsed.schema_name and table.name == parsed.table
-                ),
-                None,
-            )
-            if target_metadata is None:
-                raise InvalidSQLError(
-                    f"Target table {parsed.schema_name}.{parsed.table} does not exist."
-                )
-
-            graph = build_fk_graph(
-                parsed.schema_name,
-                parsed.table,
-                metadata.foreign_keys,
-                max_depth=self._settings.fk_max_depth,
-            )
-            direct = count_direct_impact(parsed, self._analysis_engine)
-            dependencies = count_dependency_impacts(
-                parsed, graph, self._analysis_engine
-            )
-            business = calculate_business_impact(
-                parsed,
-                graph,
-                self._analysis_engine,
-                settings=self._settings,
-            )
+            snapshot = self._pipeline.measure(parsed)
+            graph = snapshot.graph
+            direct = snapshot.direct
+            dependencies = snapshot.dependencies
+            business = snapshot.business_impact
             safer = generate_safer_alternative(
                 parsed,
-                target_metadata,
+                snapshot.target_metadata,
                 direct_rows=direct.rows,
             )
             risk = calculate_risk(
@@ -155,26 +130,14 @@ class BlastShieldAnalyzer:
                     ),
                 ],
             )
-            fingerprint = analysis_fingerprint(
-                {
-                    "normalized_sql": parsed.normalized_sql,
-                    "graph": graph.model_dump(mode="json"),
-                    "direct": direct.model_dump(mode="json"),
-                    "dependencies": [
-                        item.model_dump(mode="json") for item in dependencies
-                    ],
-                    "business_impact": business.model_dump(mode="json"),
-                }
-            )
             self._repository.complete(
                 analysis_id,
                 report=response.model_dump(mode="json"),
                 risk_score=risk.score,
                 risk_level=risk.level,
-                fingerprint=fingerprint,
+                fingerprint=snapshot.fingerprint,
             )
             return response
         except Exception:
             self._repository.mark_failed(analysis_id)
             raise
-

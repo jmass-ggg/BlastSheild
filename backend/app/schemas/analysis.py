@@ -7,16 +7,6 @@ from app.schemas.impact import BusinessImpact, DependencyImpact, ImpactSummary
 from app.schemas.risk import RiskLevel, RiskReport
 
 
-class ParsedSQLView(BaseModel):
-    operation: str
-    schema_name: str
-    table: str
-    where: str | None
-    has_where: bool
-    supported: bool
-    normalized_sql: str
-
-
 class AnalyzeRequest(BaseModel):
     sql: str = Field(min_length=1)
     source: str = Field(default="ui", min_length=1, max_length=100)

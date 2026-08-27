@@ -8,7 +8,6 @@ from app.core.errors import (
     MultipleStatementsError,
     UnsupportedSQLError,
 )
-from app.schemas.analysis import ParsedSQLView
 
 
 @dataclass(frozen=True, slots=True)
@@ -16,23 +15,10 @@ class ParsedSQL:
     operation: str
     schema_name: str
     table: str
-    where_sql: str | None
     has_where: bool
-    supported: bool
     normalized_sql: str
     expression: exp.Expression
     target: exp.Table
-
-    def to_view(self) -> ParsedSQLView:
-        return ParsedSQLView(
-            operation=self.operation,
-            schema_name=self.schema_name,
-            table=self.table,
-            where=self.where_sql,
-            has_where=self.has_where,
-            supported=self.supported,
-            normalized_sql=self.normalized_sql,
-        )
 
 
 def _operation_name(statement: exp.Expression) -> str:
@@ -89,19 +75,11 @@ def parse_sql(sql: str) -> ParsedSQL:
         )
 
     where_expression = statement.args.get("where")
-    where_sql = (
-        where_expression.this.sql(dialect="postgres")
-        if isinstance(where_expression, exp.Where)
-        else None
-    )
-
     return ParsedSQL(
         operation="DELETE",
         schema_name=target.db or "public",
         table=target.name,
-        where_sql=where_sql,
         has_where=where_expression is not None,
-        supported=True,
         normalized_sql=statement.sql(dialect="postgres", pretty=False),
         expression=statement,
         target=target,

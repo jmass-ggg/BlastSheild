@@ -47,3 +47,22 @@ class AnalysisQueryTimeoutError(BlastShieldError):
 class NotFoundError(BlastShieldError):
     def __init__(self, message: str = "Analysis not found.") -> None:
         super().__init__("NOT_FOUND", message, status_code=404)
+
+
+class InvalidStateError(BlastShieldError):
+    def __init__(self, message: str) -> None:
+        super().__init__("INVALID_STATE", message, status_code=409)
+
+
+class ApprovalRequiredError(BlastShieldError):
+    def __init__(self) -> None:
+        super().__init__(
+            "APPROVAL_REQUIRED",
+            "Human approval is required before execution.",
+            status_code=409,
+        )
+
+
+class ExecutionFailedError(BlastShieldError):
+    def __init__(self, message: str = "The approved database action failed.") -> None:
+        super().__init__("EXECUTION_FAILED", message, status_code=500)

@@ -4,6 +4,8 @@ from fastapi.responses import JSONResponse
 
 from app.api.analyses import router as analyses_router
 from app.api.analyze import router as analyze_router
+from app.api.approvals import router as approvals_router
+from app.api.execution import router as execution_router
 from app.api.health import router as health_router
 from app.core.config import get_settings
 from app.core.errors import BlastShieldError
@@ -14,7 +16,7 @@ settings = get_settings()
 
 app = FastAPI(
     title=settings.app_name,
-    version="0.2.0",
+    version="0.3.0",
     description="BlastShield destructive SQL impact analysis gateway",
 )
 app.add_middleware(
@@ -27,6 +29,8 @@ app.add_middleware(
 app.include_router(health_router, prefix=settings.api_prefix)
 app.include_router(analyze_router, prefix=settings.api_prefix)
 app.include_router(analyses_router, prefix=settings.api_prefix)
+app.include_router(approvals_router, prefix=settings.api_prefix)
+app.include_router(execution_router, prefix=settings.api_prefix)
 
 
 @app.exception_handler(BlastShieldError)
