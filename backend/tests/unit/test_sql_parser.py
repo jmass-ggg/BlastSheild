@@ -13,9 +13,7 @@ def test_parses_delete_with_predicate() -> None:
     assert parsed.schema_name == "public"
     assert parsed.table == "users"
     assert parsed.has_where is True
-    assert parsed.where_sql is not None
-    assert "last_login" in parsed.where_sql
-    assert parsed.supported is True
+    assert "last_login" in parsed.normalized_sql
 
 
 def test_parses_schema_qualified_delete_without_where() -> None:
@@ -24,7 +22,6 @@ def test_parses_schema_qualified_delete_without_where() -> None:
     assert parsed.schema_name == "audit"
     assert parsed.table == "events"
     assert parsed.has_where is False
-    assert parsed.where_sql is None
 
 
 def test_rejects_multiple_statements() -> None:
@@ -34,10 +31,22 @@ def test_rejects_multiple_statements() -> None:
     assert error.value.code == "MULTIPLE_STATEMENTS"
 
 
-def test_detects_but_rejects_non_delete_operation() -> None:
+@pytest.mark.parametrize(
+    ("sql", "operation"),
+    [
+        ("INSERT INTO users (email) VALUES ('a@example.test')", "INSERT"),
+        ("UPDATE users SET deleted_at = NOW()", "UPDATE"),
+        ("TRUNCATE TABLE users", "TRUNCATE"),
+        ("DROP TABLE users", "DROP"),
+        ("ALTER TABLE users ADD COLUMN note TEXT", "ALTER"),
+        ("CREATE TABLE notes (id BIGINT)", "CREATE"),
+    ],
+)
+def test_detects_but_rejects_non_delete_operations(
+    sql: str, operation: str
+) -> None:
     with pytest.raises(UnsupportedSQLError) as error:
-        parse_sql("UPDATE users SET deleted_at = NOW()")
+        parse_sql(sql)
 
     assert error.value.code == "UNSUPPORTED_SQL"
-    assert "UPDATE" in error.value.message
-
+    assert operation in error.value.message

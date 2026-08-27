@@ -33,6 +33,26 @@ class Settings(BaseSettings):
     business_subscription_price_column: str = "monthly_price"
 
 
+class ExecutionSettings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_prefix="BLASTSHIELD_",
+        env_file=".env",
+        extra="ignore",
+    )
+
+    execution_database_url: str = (
+        "postgresql+psycopg://blastshield_executor:executor_demo_password"
+        "@localhost:5432/blastshield"
+    )
+    execution_statement_timeout_ms: int = Field(default=10_000, ge=1, le=120_000)
+    execution_lock_timeout_ms: int = Field(default=2_000, ge=1, le=60_000)
+
+
 @lru_cache
 def get_settings() -> Settings:
     return Settings()
+
+
+@lru_cache
+def get_execution_settings() -> ExecutionSettings:
+    return ExecutionSettings()
