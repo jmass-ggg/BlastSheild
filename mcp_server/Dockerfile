@@ -8,5 +8,6 @@ COPY pyproject.toml ./
 COPY blastshield_mcp ./blastshield_mcp
 RUN pip install --no-cache-dir .
 
-CMD ["blastshield-mcp"]
+EXPOSE 8001
 
+CMD ["blastshield-mcp"]

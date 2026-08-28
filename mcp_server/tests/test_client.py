@@ -2,7 +2,7 @@ import httpx
 import pytest
 
 from blastshield_mcp.client import BlastShieldAPIClient
-from blastshield_mcp.server import mcp
+from blastshield_mcp.server import configured_transport, mcp
 
 
 def test_mcp_exposes_exactly_three_tools_and_no_approval_bypass() -> None:
@@ -12,6 +12,27 @@ def test_mcp_exposes_exactly_three_tools_and_no_approval_bypass() -> None:
         "blastshield_get_report",
         "blastshield_request_execution",
     }
+
+
+def test_mcp_transport_defaults_to_stdio(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("BLASTSHIELD_MCP_TRANSPORT", raising=False)
+
+    assert configured_transport() == "stdio"
+
+
+def test_mcp_supports_trueforge_streamable_http(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("BLASTSHIELD_MCP_TRANSPORT", "streamable-http")
+
+    assert configured_transport() == "streamable-http"
+
+
+def test_mcp_rejects_unknown_transport(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("BLASTSHIELD_MCP_TRANSPORT", "websocket")
+
+    with pytest.raises(ValueError, match="BLASTSHIELD_MCP_TRANSPORT"):
+        configured_transport()
 
 
 @pytest.mark.anyio
