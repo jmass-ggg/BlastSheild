@@ -47,4 +47,7 @@ demo-reset:
 	docker compose -p $(DEMO_PROJECT) down -v
 
 clean:
-	rm -rf .pytest_cache backend/.pytest_cache backend/*.egg-info
+	find backend mcp_server -type d \
+		\( -name '__pycache__' -o -name '.pytest_cache' -o -name '*.egg-info' \) \
+		-prune -exec rm -rf -- {} +
+	rm -rf .pytest_cache .coverage htmlcov build dist

@@ -1,11 +1,18 @@
 import os
-from typing import Any
+from typing import Any, Literal, cast
 
 from mcp.server.fastmcp import FastMCP
 
 from blastshield_mcp.client import BlastShieldAPIClient
 
-mcp = FastMCP("BlastShield")
+MCPTransport = Literal["stdio", "sse", "streamable-http"]
+
+mcp = FastMCP(
+    "BlastShield",
+    host=os.getenv("BLASTSHIELD_MCP_HOST", "127.0.0.1"),
+    port=int(os.getenv("BLASTSHIELD_MCP_PORT", "8001")),
+    streamable_http_path="/mcp",
+)
 
 
 def _client() -> BlastShieldAPIClient:
@@ -39,10 +46,18 @@ async def blastshield_request_execution(analysis_id: str) -> dict[str, Any]:
     return await _client().request_execution(analysis_id)
 
 
+def configured_transport() -> MCPTransport:
+    transport = os.getenv("BLASTSHIELD_MCP_TRANSPORT", "stdio")
+    if transport not in {"stdio", "sse", "streamable-http"}:
+        raise ValueError(
+            "BLASTSHIELD_MCP_TRANSPORT must be stdio, sse, or streamable-http."
+        )
+    return cast(MCPTransport, transport)
+
+
 def main() -> None:
-    mcp.run()
+    mcp.run(transport=configured_transport())
 
 
 if __name__ == "__main__":
     main()
-

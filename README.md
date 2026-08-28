@@ -5,11 +5,9 @@ AI agents. It analyzes the live blast radius, calculates deterministic risk,
 waits for human approval, revalidates the analysis, and executes the approved
 statement once in a transaction.
 
-The backend is complete through Day 4. The implementation designs are in
-[`backend/DESIGN-DAY2.md`](backend/DESIGN-DAY2.md),
-[`backend/DESIGN-DAY3.md`](backend/DESIGN-DAY3.md), and
-[`backend/DESIGN-DAY4.md`](backend/DESIGN-DAY4.md). The verified release record
-is in [`backend/DAY4-RELEASE.md`](backend/DAY4-RELEASE.md).
+This repository contains the backend-only MVP: the FastAPI safety gateway,
+PostgreSQL fixture and migrations, controlled MCP bridge, automated tests, and
+demo preflight.
 
 ## Architecture
 
@@ -157,9 +155,24 @@ Errors consistently use safe JSON:
 The configured frontend CORS origin is `http://localhost:3000`. MRR and ARR are
 returned as JSON numbers. State changes are visible through the GET endpoints.
 
-## MCP
+## MCP and TrueForge
 
-Run the stdio MCP server:
+Compose exposes the MCP server over Streamable HTTP for TrueForge at:
+
+```text
+http://localhost:8001/mcp
+```
+
+Start TrueForge locally (Node.js 22+), open `http://localhost:8790`, then use
+**Settings → Connectors → Add MCP Server** and register the URL above with no
+authentication. Attach the `BlastShield` connector when creating an agent.
+
+```bash
+HOST=127.0.0.1 npx @truefoundry/trueforge@latest
+```
+
+The loopback-only port mapping keeps the unauthenticated demo MCP endpoint off
+the LAN. For stdio MCP clients, run the original transport directly:
 
 ```bash
 BLASTSHIELD_API_URL=http://localhost:8000 .venv/bin/blastshield-mcp
