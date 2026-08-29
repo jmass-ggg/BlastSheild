@@ -13,16 +13,16 @@ AI Agent proposes DELETE
   ├─ FK blast-radius DAG    → 40 direct + 252 cascade rows
   ├─ Business impact        → 14 subscriptions, $406 MRR at risk
   ├─ Risk score             → 60 / HIGH
-  └─ Safer alternative      → soft-delete UPDATE + batch suggestion
+  └─ Safer alternative      → previewed + copyable soft-delete SQL
         │
         ▼  (human reviews the visual dashboard)
-  Human: Approve / Reject / Use safer version
-        │
+  Human: Approve original DELETE  ─or─  Reject
+        │  (safer SQL is previewed and copied to run separately)
         ▼  (revalidation against live production)
   Execution committed — 40 rows deleted, cascades measured
 ```
 
-This repository contains the complete full-stack platform: **Next.js** interactive frontend (React Flow blast-radius DAG, risk gauge, side-by-side safer-alternative diff), **FastAPI** safety gateway, PostgreSQL schema fixture and control-plane migrations, controlled MCP bridge, comprehensive 53-test suite, and demo preflight/rehearsal tooling.
+This repository contains the complete full-stack platform: **Next.js** interactive frontend (React Flow blast-radius DAG, risk gauge, side-by-side safer-alternative diff), **FastAPI** safety gateway, PostgreSQL schema fixture and control-plane migrations, controlled MCP bridge, **81-test suite** (53 unit + MCP, 28 QA integration), and demo preflight/rehearsal tooling.
 
 ## Architecture
 
@@ -305,7 +305,7 @@ API CONTRACT CHANGES: NONE for Day 4.
 
 | PR | What Qodo surfaced | Our decision |
 |----|-------------------|--------------|
-| [#1 — docs: README hook + why-blastshield section](https://github.com/jmass-ggg/BlastSheild/pulls) | *Pending Qodo review — link will be updated after merge* | *See PR thread* |
+| [#3 — docs: README hook + why-blastshield section](https://github.com/jmass-ggg/BlastSheild/pull/3) | 3 MEDIUM bugs: (1) flow diagram implied safer-SQL was executable via BlastShield when it is preview+copy only; (2) test count stated as 53 instead of 81; (3) PR evidence row linked to /pulls instead of a specific PR | All three fixed in follow-up commit on this branch before merge |
 
 > **How we work with Qodo findings:**
 > Every PR opens automatically triggering a Qodo agentic review.
