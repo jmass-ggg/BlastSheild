@@ -66,6 +66,7 @@ export function adaptAnalysis(
 
     affectedTableMap: buildAffectedTableMap(report),
     timeline: report.timeline,
+    graph: report.graph ?? { nodes: [], edges: [] },
   };
 }
 

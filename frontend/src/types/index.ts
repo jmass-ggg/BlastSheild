@@ -1,11 +1,12 @@
 import type {
   DependencyImpact,
+  ReportGraph,
   RiskBreakdown,
   RiskLevel,
   TimelineItem,
 } from './api';
 
-export type { RiskLevel };
+export type { RiskLevel, ReportGraph, RiskBreakdown, DependencyImpact, TimelineItem };
 
 export type ImpactRole = 'DIRECT' | 'CASCADE' | 'UNAFFECTED';
 
@@ -70,6 +71,7 @@ export interface AnalysisView {
   safer: SaferAlternativeView;
   affectedTableMap: Record<string, TableImpactInfo>;
   timeline: TimelineItem[];
+  graph: ReportGraph;
 }
 
 export interface ERNodePosition {

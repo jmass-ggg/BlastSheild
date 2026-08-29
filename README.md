@@ -1,26 +1,25 @@
-# BlastShield Backend
+# BlastShield
 
-BlastShield is a safety gateway for PostgreSQL `DELETE` statements proposed by
-AI agents. It analyzes the live blast radius, calculates deterministic risk,
-waits for human approval, revalidates the analysis, and executes the approved
-statement once in a transaction.
+BlastShield is a real-time safety gateway and visual intelligence dashboard for PostgreSQL `DELETE` statements proposed by
+AI agents. It intercepts destructive queries, analyzes the live foreign-key blast radius, calculates deterministic risk,
+presents an interactive dependency graph and safer soft-delete alternative, requires human approval, revalidates state against production, and executes approved
+statements in isolated transactions.
 
-This repository contains the backend-only MVP: the FastAPI safety gateway,
-PostgreSQL fixture and migrations, controlled MCP bridge, automated tests, and
-demo preflight.
+This repository contains the complete full-stack platform: the Next.js interactive frontend (featuring React Flow blast-radius DAG and risk gauge), FastAPI safety gateway, PostgreSQL schema fixture and control-plane migrations, controlled MCP bridge, comprehensive test suite, and demo preflight/rehearsal tooling.
 
 ## Architecture
 
 ```text
-UI / TrueForge / MCP
-          |
-          v
-      FastAPI API
-       /   |    \
- analyzer app  executor
- read-only |   domain DELETE
-           |
-      control plane
+Next.js Frontend / MCP Agent
+           │
+           ▼
+    FastAPI Gateway
+     ┌─────┼────────┐
+     ▼     ▼        ▼
+  analyzer app   executor
+(read-only) (control) (isolated DELETE)
+     │     │        │
+     └─────┴────────┴──► PostgreSQL Demo DB
 ```
 
 - `blastshield_analyzer` can inspect schema and data but cannot write.

@@ -6,6 +6,7 @@ import { PromptSection } from '../components/prompt/PromptSection';
 import { ImpactComparison } from '../components/impact/ImpactComparison';
 import { SchemaSection } from '../components/schema/SchemaSection';
 import { ExecutionModal } from '../components/execution/ExecutionModal';
+import { ActionTimeline } from '../components/timeline/ActionTimeline';
 import { DATABASE_SCHEMA } from '../constants/databaseSchema';
 import { DEFAULT_SQL, PRESET_QUERIES } from '../constants/presetQueries';
 import { ApiError, analyze, rejectAnalysis } from '../lib/apiClient';
@@ -25,6 +26,7 @@ export default function Home() {
   const [selectedTable, setSelectedTable] = useState<string>('users');
   const [isExecuteOpen, setIsExecuteOpen] = useState(false);
   const [isRejecting, setIsRejecting] = useState(false);
+  const [isSaferPreview, setIsSaferPreview] = useState(false);
 
   const runAnalysis = useCallback(async (statement: string) => {
     const trimmed = statement.trim();
@@ -32,6 +34,7 @@ export default function Home() {
 
     setIsAnalyzing(true);
     setAnalyzeError(null);
+    setIsSaferPreview(false);
     try {
       const report = await analyze({ sql: trimmed, source: 'ui' });
       const adapted = adaptAnalysis(report, trimmed);
@@ -88,6 +91,7 @@ export default function Home() {
       <Header />
 
       <main className="max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 space-y-6 flex-1">
+        {/* 1. SQL Entry & Presets */}
         <PromptSection
           sql={sql}
           onChangeSql={handleChangeSql}
@@ -98,22 +102,38 @@ export default function Home() {
           error={analyzeError}
         />
 
+        {/* Live Staged Progress (During Analysis) or Gateway Action Feed */}
+        {(isAnalyzing || view) && (
+          <ActionTimeline
+            isAnalyzing={isAnalyzing}
+            timeline={view?.timeline}
+            status={view?.status}
+          />
+        )}
+
+        {/* 2. Risk Gauge & Action Comparison */}
         {view ? (
           <ImpactComparison
             view={view}
             onExecute={() => setIsExecuteOpen(true)}
             onReject={() => void handleReject()}
             isRejecting={isRejecting}
+            isSaferPreview={isSaferPreview}
+            onToggleSaferPreview={() => setIsSaferPreview((prev) => !prev)}
           />
         ) : (
-          <EmptyState isAnalyzing={isAnalyzing} />
+          !isAnalyzing && <EmptyState />
         )}
 
+        {/* 3. Interactive Blast Radius Graph & Schema Explorer */}
         <SchemaSection
           tables={DATABASE_SCHEMA}
           affectedMap={view?.affectedTableMap ?? {}}
           selectedTable={selectedTable}
           onSelectTable={setSelectedTable}
+          graph={view?.graph}
+          isSaferMode={isSaferPreview}
+          targetTable={view?.targetTable}
         />
       </main>
 
@@ -129,12 +149,10 @@ export default function Home() {
   );
 }
 
-const EmptyState: React.FC<{ isAnalyzing: boolean }> = ({ isAnalyzing }) => (
-  <section className="bg-white rounded-2xl border border-dashed border-slate-300 p-12 text-center">
+const EmptyState: React.FC = () => (
+  <section className="bg-white rounded-2xl border border-dashed border-slate-300 p-10 text-center">
     <p className="text-body-sm text-slate-500 font-normal">
-      {isAnalyzing
-        ? 'Measuring blast radius against production metadata...'
-        : 'Run an impact analysis to see the blast radius and safer alternative.'}
+      Run an impact analysis above to inspect the blast-radius dependency graph and simulated safety alternatives.
     </p>
   </section>
 );

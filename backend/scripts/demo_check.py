@@ -1,5 +1,6 @@
-"""Non-destructive preflight for the local BlastShield demo."""
+"""Non-destructive preflight and safe end-to-end rehearsal for BlastShield."""
 
+import argparse
 import json
 import os
 import sys
@@ -17,6 +18,7 @@ EXPECTED_COUNTS = {
     "sessions": 80,
 }
 DEMO_SQL = "DELETE FROM users WHERE last_login < NOW() - INTERVAL '2 years';"
+REHEARSAL_SQL = "DELETE FROM sessions WHERE expires_at < NOW() - INTERVAL '100 years';"
 
 
 class CheckFailed(RuntimeError):
@@ -24,7 +26,7 @@ class CheckFailed(RuntimeError):
 
 
 def local_database_url(role: str, password: str) -> str:
-    port = os.getenv("POSTGRES_PORT", "5432")
+    port = os.getenv("POSTGRES_PORT", "55432" if os.path.exists(".env") else "5432")
     return f"postgresql+psycopg://{role}:{password}@localhost:{port}/blastshield"
 
 
@@ -139,7 +141,52 @@ def verify_api(api_url: str) -> str:
     return str(report["analysis_id"])
 
 
+def run_rehearsal(api_url: str) -> None:
+    print("\n--- RUNNING FULL LIFECYCLE REHEARSAL ---")
+    
+    # 1. Analyze safe test query
+    print("1. Intercept & Analyze SQL...")
+    report = request_json(
+        "POST",
+        f"{api_url}/api/v1/analyze",
+        {"sql": REHEARSAL_SQL, "source": "demo-rehearsal"},
+    )
+    analysis_id = report["analysis_id"]
+    print(f"   ✓ Intercepted: analysis_id={analysis_id}, status={report['status']}")
+    print(f"   ✓ Risk Score: {report['risk']['score']}/100 ({report['risk']['level']})")
+
+    # 2. Approve analysis
+    print("2. Human Operator Approval...")
+    approval = request_json(
+        "POST",
+        f"{api_url}/api/v1/analyses/{analysis_id}/approve",
+        {"actor": "demo-rehearsal", "reason": "Pre-demo rehearsal test"},
+    )
+    if approval.get("status") != "APPROVED":
+        raise CheckFailed(f"Approval failed, got status: {approval.get('status')}")
+    print(f"   ✓ Status transitioned to {approval['status']}")
+
+    # 3. Execute analysis
+    print("3. Execution with Pre-Execution Fingerprint Revalidation...")
+    execution = request_json(
+        "POST",
+        f"{api_url}/api/v1/analyses/{analysis_id}/execute",
+    )
+    if not execution.get("executed") or execution.get("status") != "EXECUTED":
+        raise CheckFailed(f"Execution failed: {execution}")
+    print(f"   ✓ Executed successfully: {execution['affected_rows']} rows affected, status={execution['status']}")
+    print("--- REHEARSAL COMPLETE: FULL PIPELINE VERIFIED ---\n")
+
+
 def main() -> int:
+    parser = argparse.ArgumentParser(description="BlastShield demo preflight and rehearsal.")
+    parser.add_argument(
+        "--rehearse",
+        action="store_true",
+        help="Run an end-to-end rehearsal (analyze -> approve -> execute) with a non-destructive query.",
+    )
+    args = parser.parse_args()
+
     api_url = os.getenv(
         "BLASTSHIELD_API_URL",
         f"http://localhost:{os.getenv('BACKEND_PORT', '8000')}",
@@ -160,11 +207,13 @@ def main() -> int:
         verify_fixture(analysis_url)
         verify_no_active_claims(app_url)
         analysis_id = verify_api(api_url)
+        if args.rehearse:
+            run_rehearsal(api_url)
     except Exception as error:
         if isinstance(error, CheckFailed):
             message = str(error)
         else:
-            message = f"{type(error).__name__}; inspect backend/PostgreSQL health."
+            message = f"{type(error).__name__}: {error}; inspect backend/PostgreSQL health."
         print(f"DEMO CHECK FAILED: {message}", file=sys.stderr)
         return 1
 
