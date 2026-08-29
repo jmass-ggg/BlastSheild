@@ -112,7 +112,7 @@ export const ExecutionModal: React.FC<ExecutionModalProps> = ({
                 Execute Original Action
               </h3>
               <p className="text-caption text-slate-500 font-normal">
-                Approve, revalidate, then commit to production
+                Dashboard approval path · revalidate before commit
               </p>
             </div>
           </div>

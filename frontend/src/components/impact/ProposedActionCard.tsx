@@ -160,7 +160,7 @@ export const ProposedActionCard: React.FC<ProposedActionCardProps> = ({
           className="flex-1 py-3 bg-rose-600 hover:bg-rose-700 text-white font-semibold text-body-sm rounded-xl transition-all shadow-sm flex items-center justify-center gap-2 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
         >
           <AlertTriangle className="w-4 h-4" />
-          <span>Approve &amp; Execute Original</span>
+          <span>Dashboard Review &amp; Execute</span>
         </button>
         <button
           onClick={onReject}

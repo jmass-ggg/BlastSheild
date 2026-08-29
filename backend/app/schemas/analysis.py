@@ -35,6 +35,7 @@ class TimelineItem(BaseModel):
 class AnalysisResponse(BaseModel):
     analysis_id: uuid.UUID
     status: str
+    sql: str | None = None
     action: ActionReport
     impact: ImpactSummary
     dependencies: list[DependencyImpact]

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Header } from '../components/layout/Header';
 import { PromptSection } from '../components/prompt/PromptSection';
 import { ImpactComparison } from '../components/impact/ImpactComparison';
@@ -9,7 +9,7 @@ import { ExecutionModal } from '../components/execution/ExecutionModal';
 import { ActionTimeline } from '../components/timeline/ActionTimeline';
 import { DATABASE_SCHEMA } from '../constants/databaseSchema';
 import { DEFAULT_SQL, PRESET_QUERIES } from '../constants/presetQueries';
-import { ApiError, analyze, rejectAnalysis } from '../lib/apiClient';
+import { ApiError, analyze, listAnalyses, rejectAnalysis } from '../lib/apiClient';
 import { adaptAnalysis } from '../lib/adaptAnalysis';
 import { AnalysisView } from '../types';
 
@@ -27,6 +27,37 @@ export default function Home() {
   const [isExecuteOpen, setIsExecuteOpen] = useState(false);
   const [isRejecting, setIsRejecting] = useState(false);
   const [isSaferPreview, setIsSaferPreview] = useState(false);
+  const latestReportKey = useRef<string | null>(null);
+
+  // Keep the dashboard synchronized with analyses created by TrueForge/MCP.
+  // The backend remains authoritative; the browser never recomputes evidence.
+  useEffect(() => {
+    let cancelled = false;
+
+    const syncLatestReport = async () => {
+      if (isAnalyzing) return;
+      try {
+        const reports = await listAnalyses(1);
+        const latest = reports[0];
+        if (!latest || cancelled) return;
+        const reportKey = `${latest.analysis_id}:${latest.status}`;
+        if (latestReportKey.current === reportKey) return;
+        latestReportKey.current = reportKey;
+        const adapted = adaptAnalysis(latest, latest.sql ?? DEFAULT_SQL);
+        setSelectedTable(adapted.targetTable);
+        setView(adapted);
+      } catch {
+        // The prompt owns user-facing connection errors. Background sync is best effort.
+      }
+    };
+
+    void syncLatestReport();
+    const timer = window.setInterval(() => void syncLatestReport(), 3000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [isAnalyzing]);
 
   const runAnalysis = useCallback(async (statement: string) => {
     const trimmed = statement.trim();

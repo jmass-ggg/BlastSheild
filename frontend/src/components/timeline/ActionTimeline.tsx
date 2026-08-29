@@ -60,11 +60,11 @@ export const ActionTimeline: React.FC<ActionTimelineProps> = ({
           <div className="flex items-center gap-2">
             <Loader2 className="w-4 h-4 text-amber-400 animate-spin" />
             <span className="text-body-sm font-bold text-white font-mono uppercase tracking-wider">
-              BlastShield Sandbox Simulation Active
+              BlastShield Production Analysis Active
             </span>
           </div>
           <span className="text-badge font-mono text-amber-400 bg-amber-950/80 border border-amber-800 px-2 py-0.5 rounded-full">
-            Measuring Prod Impact
+            Read-only Live Measurement
           </span>
         </div>
 

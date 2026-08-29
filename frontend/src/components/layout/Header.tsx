@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { ShieldAlert, Database } from 'lucide-react';
+import { ShieldAlert, ScanSearch } from 'lucide-react';
 
 export const Header: React.FC = () => {
   return (
@@ -21,7 +21,7 @@ export const Header: React.FC = () => {
               </span>
             </div>
             <p className="text-body-sm text-slate-500 font-normal mt-0.5">
-              Intercepts dangerous queries, simulates blast radius, and recommends safer alternatives.
+              Measures live production impact, explains risk, and constrains execution.
             </p>
           </div>
         </div>
@@ -33,8 +33,8 @@ export const Header: React.FC = () => {
             <span>blastshield_prod: <strong className="font-semibold">PROTECTED</strong></span>
           </div>
           <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 border border-slate-200 font-medium">
-            <Database className="w-3.5 h-3.5 text-blue-600" />
-            <span>blastshield_sandbox: <strong className="font-semibold">READY</strong></span>
+            <ScanSearch className="w-3.5 h-3.5 text-blue-600" />
+            <span>analyzer_role: <strong className="font-semibold">READ ONLY</strong></span>
           </div>
         </div>
 

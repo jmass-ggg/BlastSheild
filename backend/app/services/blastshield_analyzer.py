@@ -110,6 +110,7 @@ class BlastShieldAnalyzer:
             response = AnalysisResponse(
                 analysis_id=analysis_id,
                 status="PENDING_APPROVAL",
+                sql=request.sql,
                 action=ActionReport(
                     operation=parsed.operation,
                     table=parsed.table,

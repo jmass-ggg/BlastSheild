@@ -100,6 +100,7 @@ export interface TimelineItem {
 export interface AnalysisResponse {
   analysis_id: string;
   status: string;
+  sql?: string | null;
   action: ActionReport;
   impact: ImpactSummary;
   dependencies: DependencyImpact[];

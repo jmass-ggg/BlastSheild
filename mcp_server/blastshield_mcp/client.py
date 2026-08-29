@@ -55,8 +55,45 @@ class BlastShieldAPIClient:
     async def get_report(self, analysis_id: str) -> dict[str, Any]:
         return await self._request("GET", f"/api/v1/analyses/{analysis_id}")
 
+    async def approve(
+        self,
+        analysis_id: str,
+        *,
+        actor: str,
+        reason: str,
+    ) -> dict[str, Any]:
+        return await self._request(
+            "POST",
+            f"/api/v1/analyses/{analysis_id}/approve",
+            json_body={"actor": actor, "reason": reason},
+        )
+
     async def request_execution(self, analysis_id: str) -> dict[str, Any]:
         return await self._request(
             "POST", f"/api/v1/analyses/{analysis_id}/execute"
         )
 
+    async def approve_and_request_execution(
+        self,
+        analysis_id: str,
+        *,
+        actor: str,
+        reason: str,
+    ) -> dict[str, Any]:
+        """Translate an already-approved host tool call into backend lifecycle steps."""
+        report = await self.get_report(analysis_id)
+        status = report.get("status")
+        if status == "PENDING_APPROVAL":
+            approval = await self.approve(
+                analysis_id,
+                actor=actor,
+                reason=reason,
+            )
+            if approval.get("status") != "APPROVED":
+                return approval
+        elif status != "APPROVED":
+            return {
+                "code": "INVALID_STATE",
+                "message": f"Analysis cannot execute from status {status}.",
+            }
+        return await self.request_execution(analysis_id)

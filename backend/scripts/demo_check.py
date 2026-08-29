@@ -3,8 +3,11 @@
 import argparse
 import json
 import os
+import subprocess
 import sys
+import tempfile
 import urllib.request
+from pathlib import Path
 from typing import Any
 
 from sqlalchemy import create_engine, text
@@ -97,7 +100,7 @@ def verify_no_active_claims(app_url: str) -> None:
         engine.dispose()
 
 
-def verify_api(api_url: str) -> str:
+def verify_api(api_url: str) -> dict[str, Any]:
     health = request_json("GET", f"{api_url}/api/v1/health")
     if health.get("status") != "ok":
         raise CheckFailed("Backend health did not return status=ok.")
@@ -138,7 +141,54 @@ def verify_api(api_url: str) -> str:
         raise CheckFailed("Demo business-impact metrics are not deterministic.")
     if report["risk"]["score"] != 60 or report["risk"]["level"] != "HIGH":
         raise CheckFailed("Demo risk result does not match the frozen policy.")
-    return str(report["analysis_id"])
+    return report
+
+
+def run_agent_demo(report: dict[str, Any]) -> None:
+    verifier = (
+        Path(__file__).resolve().parents[2]
+        / "trueforge"
+        / "skills"
+        / "blastshield-demo"
+        / "scripts"
+        / "verify_report.py"
+    )
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".json") as report_file:
+        json.dump(report, report_file)
+        report_file.flush()
+        completed = subprocess.run(
+            [sys.executable, str(verifier), report_file.name],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+    if completed.returncode != 0:
+        raise CheckFailed(
+            f"Independent report verification failed: {completed.stdout.strip()}"
+        )
+
+    verification = json.loads(completed.stdout)
+    if verification.get("verification") != "PASSED":
+        raise CheckFailed("Independent report verification did not pass.")
+
+    impact = report["impact"]
+    business = report["business_impact"]
+    risk = report["risk"]
+    print("\n--- TRUEFORGE AGENT DEMO ---")
+    print("TrueForge sandbox verification: PASSED")
+    print("\nAgent:")
+    print(f'"I found {impact["total_rows"]} total affected records.')
+    print(f'Risk = {risk["level"]}.\n')
+    print(
+        f'{business["active_subscriptions"]} active subscriptions would be affected.'
+    )
+    print(f'${business["mrr_at_risk"]:,.0f} MRR is at risk.\n')
+    print('I recommend rejecting this operation."')
+    print("\nNext direct tool call: blastshield_request_execution(analysis_id)")
+    print("Expected TrueForge checkpoint: Tool requires approval [DENY] [ALLOW]")
+    print("DENY leaves production unchanged.")
+    print("ALLOW records approval, revalidates, and uses the constrained executor.")
+    print("--- END TRUEFORGE AGENT DEMO ---\n")
 
 
 def run_rehearsal(api_url: str) -> None:
@@ -185,6 +235,11 @@ def main() -> int:
         action="store_true",
         help="Run an end-to-end rehearsal (analyze -> approve -> execute) with a non-destructive query.",
     )
+    parser.add_argument(
+        "--agent-demo",
+        action="store_true",
+        help="Print the verified TrueForge agent narrative without executing the DELETE.",
+    )
     args = parser.parse_args()
 
     api_url = os.getenv(
@@ -206,7 +261,10 @@ def main() -> int:
         verify_role(execution_url, "blastshield_executor")
         verify_fixture(analysis_url)
         verify_no_active_claims(app_url)
-        analysis_id = verify_api(api_url)
+        report = verify_api(api_url)
+        analysis_id = str(report["analysis_id"])
+        if args.agent_demo:
+            run_agent_demo(report)
         if args.rehearse:
             run_rehearsal(api_url)
     except Exception as error:
