@@ -3,9 +3,9 @@ import uuid
 
 from fastapi import APIRouter
 
+from app.core.logging import log_lifecycle
 from app.repositories.analysis_repository import AnalysisRepository
 from app.schemas.approval import ApprovalRequest, ApprovalTransitionResponse
-from app.core.logging import log_lifecycle
 
 router = APIRouter(tags=["approvals"])
 logger = logging.getLogger(__name__)

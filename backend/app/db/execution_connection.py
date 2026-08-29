@@ -23,13 +23,12 @@ def execution_transaction(
 ) -> Iterator[Connection]:
     selected_engine = engine or get_execution_engine()
     selected_settings = settings or get_execution_settings()
-    with selected_engine.connect() as connection:
-        with connection.begin():
-            connection.exec_driver_sql(
-                "SET LOCAL statement_timeout = "
-                f"{selected_settings.execution_statement_timeout_ms}"
-            )
-            connection.exec_driver_sql(
-                f"SET LOCAL lock_timeout = {selected_settings.execution_lock_timeout_ms}"
-            )
-            yield connection
+    with selected_engine.connect() as connection, connection.begin():
+        connection.exec_driver_sql(
+            "SET LOCAL statement_timeout = "
+            f"{selected_settings.execution_statement_timeout_ms}"
+        )
+        connection.exec_driver_sql(
+            f"SET LOCAL lock_timeout = {selected_settings.execution_lock_timeout_ms}"
+        )
+        yield connection

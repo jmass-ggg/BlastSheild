@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 
 from sqlglot import exp, parse
-from sqlglot.errors import ParseError, SqlglotError
+from sqlglot.errors import SqlglotError
 
 from app.core.errors import (
     InvalidSQLError,

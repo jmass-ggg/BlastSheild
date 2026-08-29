@@ -9,7 +9,6 @@ from typing import Any
 
 from sqlalchemy import create_engine, text
 
-
 EXPECTED_COUNTS = {
     "users": 100,
     "orders": 250,
@@ -209,7 +208,7 @@ def main() -> int:
         analysis_id = verify_api(api_url)
         if args.rehearse:
             run_rehearsal(api_url)
-    except Exception as error:
+    except Exception as error:  # noqa: BLE001 — intentional: preflight must surface any error type as a single failure message
         if isinstance(error, CheckFailed):
             message = str(error)
         else:

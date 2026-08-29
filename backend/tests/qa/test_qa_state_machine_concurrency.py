@@ -1,16 +1,11 @@
-import os
-import uuid
 from concurrent.futures import ThreadPoolExecutor
-import pytest
-from sqlalchemy import create_engine, text
-from sqlalchemy.orm import sessionmaker
 
-from app.core.config import ExecutionSettings, Settings
+import pytest
+from app.core.config import Settings
 from app.core.errors import (
     ApprovalRequiredError,
     ExecutionFailedError,
     InvalidStateError,
-    NotFoundError,
 )
 from app.repositories.analysis_repository import AnalysisRepository
 from app.schemas.analysis import AnalyzeRequest
@@ -20,6 +15,8 @@ from app.services.blastshield_analyzer import BlastShieldAnalyzer
 from app.services.execution_coordinator import ExecutionCoordinator
 from app.services.executor import Executor
 from app.services.revalidator import Revalidator
+from sqlalchemy import text
+from sqlalchemy.orm import sessionmaker
 
 
 def _get_counts(engine) -> dict[str, int]:
@@ -151,7 +148,7 @@ def test_concurrency_execution_locking(analyzer_engine, app_engine, execution_en
     def try_execute():
         try:
             return coordinator.execute(analysis.analysis_id).status
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 — intentional: thread worker must capture any exception type and return its name for assertion
             return type(e).__name__
 
     with ThreadPoolExecutor(max_workers=4) as pool:

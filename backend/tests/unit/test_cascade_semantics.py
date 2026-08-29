@@ -1,5 +1,4 @@
 import pytest
-
 from app.schemas.graph import GraphEdge
 from app.services.cascade_semantics import dependency_effect
 

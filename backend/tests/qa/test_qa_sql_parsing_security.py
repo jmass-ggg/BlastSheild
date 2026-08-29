@@ -1,5 +1,9 @@
 import pytest
-from app.core.errors import InvalidSQLError, MultipleStatementsError, UnsupportedSQLError
+from app.core.errors import (
+    InvalidSQLError,
+    MultipleStatementsError,
+    UnsupportedSQLError,
+)
 from app.services.sql_parser import parse_sql
 
 

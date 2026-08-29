@@ -1,13 +1,12 @@
 import os
 
 import pytest
-from sqlalchemy import create_engine, text
-from sqlalchemy.exc import DBAPIError
-
 from app.services.fk_graph import build_fk_graph
 from app.services.impact_counter import count_direct_impact
 from app.services.schema_analyzer import discover_schema
 from app.services.sql_parser import parse_sql
+from sqlalchemy import create_engine, text
+from sqlalchemy.exc import DBAPIError
 
 TEST_DATABASE_URL = os.getenv("BLASTSHIELD_TEST_DATABASE_URL")
 pytestmark = [
@@ -34,9 +33,8 @@ def test_analyzer_can_select(analyzer_engine) -> None:
 
 
 def test_database_rejects_analyzer_delete(analyzer_engine) -> None:
-    with pytest.raises(DBAPIError):
-        with analyzer_engine.begin() as connection:
-            connection.execute(text("DELETE FROM users WHERE id = -1"))
+    with pytest.raises(DBAPIError), analyzer_engine.begin() as connection:
+        connection.execute(text("DELETE FROM users WHERE id = -1"))
 
 
 def test_direct_impact_uses_live_data(analyzer_engine) -> None:

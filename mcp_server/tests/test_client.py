@@ -1,6 +1,5 @@
 import httpx
 import pytest
-
 from blastshield_mcp.client import BlastShieldAPIClient
 from blastshield_mcp.server import configured_transport, mcp
 

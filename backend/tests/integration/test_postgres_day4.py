@@ -26,29 +26,26 @@ def test_database_role_security_matrix() -> None:
                 "blastshield_analyzer"
             )
             connection.execute(text("EXPLAIN SELECT COUNT(*) FROM users"))
-        with pytest.raises(DBAPIError):
-            with analyzer.begin() as connection:
-                connection.execute(text("CREATE TABLE forbidden_table (id BIGINT)"))
+        with pytest.raises(DBAPIError), analyzer.begin() as connection:
+            connection.execute(text("CREATE TABLE forbidden_table (id BIGINT)"))
 
         with app.connect() as connection:
             assert connection.execute(text("SELECT current_user")).scalar_one() == (
                 "blastshield_app"
             )
             connection.execute(text("SELECT COUNT(*) FROM blastshield_control.analyses"))
-        with pytest.raises(DBAPIError):
-            with app.connect() as connection:
-                connection.execute(text("SELECT COUNT(*) FROM users"))
+        with pytest.raises(DBAPIError), app.connect() as connection:
+            connection.execute(text("SELECT COUNT(*) FROM users"))
 
         with executor.connect() as connection:
             assert connection.execute(text("SELECT current_user")).scalar_one() == (
                 "blastshield_executor"
             )
             connection.execute(text("UPDATE users SET full_name = full_name WHERE id = -1"))
-        with pytest.raises(DBAPIError):
-            with executor.connect() as connection:
-                connection.execute(
-                    text("UPDATE blastshield_control.analyses SET status = status")
-                )
+        with pytest.raises(DBAPIError), executor.connect() as connection:
+            connection.execute(
+                text("UPDATE blastshield_control.analyses SET status = status")
+            )
     finally:
         analyzer.dispose()
         app.dispose()

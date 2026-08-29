@@ -1,14 +1,13 @@
 import os
 
 import pytest
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-
 from app.core.config import Settings
 from app.repositories.analysis_repository import AnalysisRepository
 from app.schemas.analysis import AnalyzeRequest
 from app.services.blastshield_analyzer import BlastShieldAnalyzer
 from app.services.impact_counter import measure_count_query
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 
 ANALYSIS_DATABASE_URL = os.getenv("BLASTSHIELD_TEST_DATABASE_URL")
 APP_DATABASE_URL = os.getenv("BLASTSHIELD_TEST_APP_DATABASE_URL")

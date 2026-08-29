@@ -1,5 +1,4 @@
 import pytest
-
 from app.core.errors import MultipleStatementsError, UnsupportedSQLError
 from app.services.sql_parser import parse_sql
 

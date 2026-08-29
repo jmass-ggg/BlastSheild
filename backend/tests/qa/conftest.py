@@ -1,15 +1,17 @@
 import os
-import pytest
 from collections.abc import Iterator
-from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, text
-from sqlalchemy.orm import sessionmaker
 
-from app.core.config import ExecutionSettings, Settings, get_execution_settings, get_settings
-from app.db.app_database import get_app_engine, get_session_factory
+import pytest
+from app.core.config import (
+    get_execution_settings,
+    get_settings,
+)
 from app.db.analysis_connection import get_analysis_engine
+from app.db.app_database import get_app_engine, get_session_factory
 from app.db.execution_connection import get_execution_engine
 from app.main import app
+from fastapi.testclient import TestClient
+from sqlalchemy import create_engine, text
 
 POSTGRES_PORT = os.getenv("POSTGRES_PORT", "55432")
 
