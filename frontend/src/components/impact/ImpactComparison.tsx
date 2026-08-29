@@ -32,8 +32,8 @@ export const ImpactComparison: React.FC<ImpactComparisonProps> = ({
     : view.riskLevel;
 
   return (
-    <section className="space-y-6">
-      {/* 2. Central Blast Radius Risk Gauge */}
+    <section className="space-y-5">
+      {/* 2. Central Blast Radius Risk Gauge & Avionics Telemetry */}
       <RiskGauge
         score={currentScore}
         level={currentLevel}
@@ -41,10 +41,14 @@ export const ImpactComparison: React.FC<ImpactComparisonProps> = ({
         isSaferMode={isSaferPreview}
         originalScore={view.riskScore}
         originalLevel={view.riskLevel}
+        directRows={view.directRows}
+        dependentRows={view.dependentRows}
+        arrAtRisk={view.arrAtRisk}
+        targetTable={view.targetTable}
       />
 
       {/* Side-by-Side Original vs Recommended Comparison */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-stretch">
         <ProposedActionCard
           view={view}
           onExecute={onExecute}

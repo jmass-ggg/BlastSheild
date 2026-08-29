@@ -24,20 +24,20 @@ export const SchemaERDiagram: React.FC<SchemaERDiagramProps> = ({
   const [hoveredTable, setHoveredTable] = useState<string | null>(null);
 
   return (
-    <div className="w-full bg-slate-50/70 rounded-2xl border border-slate-200 p-4 relative overflow-x-auto shadow-inner">
+    <div className="w-full bg-[#070b12] rounded-2xl border border-[#1e293b] p-4 relative overflow-x-auto shadow-inner">
       <div className="min-w-[980px] h-[580px] relative select-none">
         
         {/* SVG ER Connecting Lines */}
         <svg className="absolute inset-0 w-full h-full pointer-events-none z-10">
           <defs>
             <marker id="er-arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-              <path d="M 0 1 L 8 5 L 0 9 z" fill="#94a3b8" />
+              <path d="M 0 1 L 8 5 L 0 9 z" fill="#475569" />
             </marker>
             <marker id="er-arrow-active" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-              <path d="M 0 1 L 8 5 L 0 9 z" fill="#ea580c" />
+              <path d="M 0 1 L 8 5 L 0 9 z" fill="#f59e0b" />
             </marker>
             <marker id="er-arrow-safe" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-              <path d="M 0 1 L 8 5 L 0 9 z" fill="#16a34a" />
+              <path d="M 0 1 L 8 5 L 0 9 z" fill="#10b981" />
             </marker>
           </defs>
 
@@ -60,12 +60,12 @@ export const SchemaERDiagram: React.FC<SchemaERDiagramProps> = ({
             const isHighlight = selectedTable === rel.from || selectedTable === rel.to;
 
             const strokeColor = isSaferMode
-              ? '#16a34a'
+              ? '#10b981'
               : isAffected
-              ? '#ea580c'
+              ? '#f59e0b'
               : isHighlight
-              ? '#3b82f6'
-              : '#cbd5e1';
+              ? '#06b6d4'
+              : '#334155';
 
             const markerId = isSaferMode
               ? 'url(#er-arrow-safe)'
@@ -80,10 +80,9 @@ export const SchemaERDiagram: React.FC<SchemaERDiagramProps> = ({
                   <path
                     d={pathD}
                     fill="none"
-                    stroke="#fed7aa"
+                    stroke="rgba(245, 158, 11, 0.2)"
                     strokeWidth="8"
                     strokeLinecap="round"
-                    className="opacity-75"
                   />
                 )}
 
@@ -92,8 +91,9 @@ export const SchemaERDiagram: React.FC<SchemaERDiagramProps> = ({
                   d={pathD}
                   fill="none"
                   stroke={strokeColor}
-                  strokeWidth={isAffected ? '2.5' : '1.75'}
+                  strokeWidth={isAffected ? '2.5' : '1.5'}
                   strokeDasharray={isAffected ? '6,4' : 'none'}
+                  className={isAffected ? 'animate-flow-dash' : undefined}
                   markerEnd={markerId}
                 />
 
@@ -102,16 +102,16 @@ export const SchemaERDiagram: React.FC<SchemaERDiagramProps> = ({
                   x={(startX + endX) / 2 - 45}
                   y={midY - 10}
                   width="90"
-                  height="22"
+                  height="24"
                 >
-                  <div className={`text-badge font-mono font-semibold px-1.5 py-0.5 rounded text-center shadow-2xs border ${
+                  <div className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded text-center border shadow-sm ${
                     isSaferMode
-                      ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                      ? 'bg-emerald-950/90 text-emerald-300 border-emerald-700'
                       : isAffected
-                      ? 'bg-amber-100 text-amber-900 border-amber-300'
-                      : 'bg-white text-slate-600 border-slate-200'
+                      ? 'bg-amber-950/90 text-amber-300 border-amber-600 shadow-[0_0_10px_rgba(245,158,11,0.3)]'
+                      : 'bg-[#0b0f19] text-slate-400 border-[#1e293b]'
                   }`}>
-                    CASCADE
+                    {isSaferMode ? 'PROTECTED' : 'CASCADE'}
                   </div>
                 </foreignObject>
               </g>
@@ -126,42 +126,42 @@ export const SchemaERDiagram: React.FC<SchemaERDiagramProps> = ({
           const isSelected = selectedTable === tblName;
           const isRoot = tblName === 'users';
 
-          let borderStyle = 'border-slate-200 hover:border-slate-300';
-          let headerBg = 'bg-slate-100 text-slate-800';
+          let borderStyle = 'border-[#1e293b] hover:border-[#334155] bg-[#0d1424]';
+          let headerBg = 'bg-[#131d31] text-slate-200 border-b border-[#1e293b]';
           let badgePill = (
-            <span className="text-badge font-medium text-slate-500 bg-slate-200/80 px-1.5 py-0.2 rounded font-mono">
+            <span className="text-[10px] font-mono font-medium text-slate-500 bg-[#070b12] px-1.5 py-0.2 rounded">
               UNAFFECTED
             </span>
           );
 
           if (isSaferMode && impact) {
-            borderStyle = 'border-emerald-400 ring-2 ring-emerald-100';
-            headerBg = 'bg-emerald-50 text-emerald-900 border-b border-emerald-200';
+            borderStyle = 'border-emerald-500/70 bg-[#091515] ring-1 ring-emerald-500/30';
+            headerBg = 'bg-emerald-950/70 text-emerald-300 border-b border-emerald-800/50';
             badgePill = (
-              <span className="text-badge font-semibold text-emerald-800 bg-emerald-100 px-1.5 py-0.2 rounded font-mono border border-emerald-300">
+              <span className="text-[10px] font-mono font-semibold text-emerald-300 bg-emerald-950 px-1.5 py-0.2 rounded border border-emerald-600">
                 SAFEGUARDED
               </span>
             );
           } else if (impact?.role === 'DIRECT') {
-            borderStyle = 'border-rose-400 ring-2 ring-rose-100 shadow-md';
-            headerBg = 'bg-rose-50 text-rose-900 border-b border-rose-200';
+            borderStyle = 'border-rose-500/80 bg-[#140b12] ring-1 ring-rose-500/40 shadow-[0_0_20px_rgba(244,63,94,0.3)]';
+            headerBg = 'bg-rose-950/70 text-rose-300 border-b border-rose-800/50';
             badgePill = (
-              <span className="text-badge font-bold text-rose-800 bg-rose-100 px-1.5 py-0.2 rounded font-mono border border-rose-300">
+              <span className="text-[10px] font-mono font-bold text-rose-300 bg-rose-950 px-1.5 py-0.2 rounded border border-rose-600">
                 DIRECT ({formatNumber(impact.count)})
               </span>
             );
           } else if (impact?.role === 'CASCADE') {
-            borderStyle = 'border-amber-400 ring-2 ring-amber-100 shadow-sm';
-            headerBg = 'bg-amber-50 text-amber-900 border-b border-amber-200';
+            borderStyle = 'border-amber-500/80 bg-[#16120b] ring-1 ring-amber-500/40 shadow-[0_0_20px_rgba(245,158,11,0.25)]';
+            headerBg = 'bg-amber-950/70 text-amber-300 border-b border-amber-800/50';
             badgePill = (
-              <span className="text-badge font-bold text-amber-800 bg-amber-100 px-1.5 py-0.2 rounded font-mono border border-amber-300">
+              <span className="text-[10px] font-mono font-bold text-amber-300 bg-amber-950 px-1.5 py-0.2 rounded border border-amber-600">
                 CASCADE ({formatNumber(impact.count)})
               </span>
             );
           }
 
           if (isSelected) {
-            borderStyle += ' ring-2 ring-blue-500 shadow-lg';
+            borderStyle += ' ring-2 ring-cyan-400 shadow-[0_0_25px_rgba(6,182,212,0.4)]';
           }
 
           return (
@@ -175,41 +175,41 @@ export const SchemaERDiagram: React.FC<SchemaERDiagramProps> = ({
               onClick={() => onSelectTable(tblName)}
               onMouseEnter={() => setHoveredTable(tblName)}
               onMouseLeave={() => setHoveredTable(null)}
-              className={`absolute z-20 bg-white rounded-xl border transition-all cursor-pointer shadow-sm overflow-hidden flex flex-col ${borderStyle}`}
+              className={`absolute z-20 rounded-xl border transition-all cursor-pointer shadow-sm overflow-hidden flex flex-col ${borderStyle}`}
             >
               {/* Card Header: Table Name + Row Count */}
               <div className={`px-3 py-2 flex items-center justify-between ${headerBg}`}>
-                <div className="flex items-center gap-1.5 font-mono font-semibold text-caption">
-                  <Database className="w-3.5 h-3.5" />
-                  <span>{tblName}</span>
+                <div className="flex items-center gap-1.5 font-mono font-bold text-xs">
+                  <Database className="w-3.5 h-3.5 text-slate-400" />
+                  <span className="text-slate-100">{tblName}</span>
                 </div>
                 {badgePill}
               </div>
 
               {/* Column list preview */}
-              <div className="p-2.5 space-y-1 text-caption font-mono bg-white">
+              <div className="p-2.5 space-y-1 text-xs font-mono bg-[#090d16]">
                 {table.columns.slice(0, 4).map((col) => (
-                  <div key={col.name} className="flex items-center justify-between text-slate-600">
+                  <div key={col.name} className="flex items-center justify-between text-slate-400 text-[11px]">
                     <span className="flex items-center gap-1">
-                      {col.isPk && <Key className="w-2.5 h-2.5 text-amber-500" />}
-                      {col.isFk && <Link2 className="w-2.5 h-2.5 text-purple-500" />}
-                      <span className={col.isPk ? 'font-semibold text-slate-900' : 'font-normal'}>{col.name}</span>
+                      {col.isPk && <Key className="w-2.5 h-2.5 text-amber-400" />}
+                      {col.isFk && <Link2 className="w-2.5 h-2.5 text-purple-400" />}
+                      <span className={col.isPk ? 'font-semibold text-slate-200' : 'font-normal text-slate-300'}>{col.name}</span>
                     </span>
-                    <span className="text-badge text-slate-400 font-normal">{col.type.split('(')[0]}</span>
+                    <span className="text-[10px] text-cyan-400 font-normal">{col.type.split('(')[0].toLowerCase()}</span>
                   </div>
                 ))}
 
                 {table.columns.length > 4 && (
-                  <div className="text-badge text-slate-400 text-center pt-0.5 font-normal">
+                  <div className="text-[10px] text-slate-600 text-center pt-0.5 font-normal">
                     + {table.columns.length - 4} more columns
                   </div>
                 )}
               </div>
 
               {/* Table Total Rows Footnote */}
-              <div className="px-3 py-1 bg-slate-50 border-t border-slate-100 flex items-center justify-between text-badge text-slate-500 font-mono font-normal">
+              <div className="px-3 py-1 bg-[#070b12] border-t border-[#1e293b] flex items-center justify-between text-[10px] text-slate-500 font-mono">
                 <span>{formatNumber(table.rowCount)} rows</span>
-                {isRoot && <span className="font-semibold text-slate-700">ROOT ENTITY</span>}
+                {isRoot && <span className="font-bold text-slate-400">ROOT ENTITY</span>}
               </div>
             </div>
           );

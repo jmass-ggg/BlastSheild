@@ -17,8 +17,8 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'BlastShield — Pre-Execution Impact Analysis',
-  description: 'Intercepts dangerous database actions, proves consequence blast radius, and recommends safer alternatives.',
+  title: 'BlastShield // Pre-Execution Safety Cockpit',
+  description: 'Deterministic pre-execution PostgreSQL safety gateway, consequence blast-radius analyzer, and automated zero-loss safeguard orchestrator.',
 };
 
 export default function RootLayout({
@@ -27,8 +27,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${inter.variable} ${jetbrainsMono.variable}`}>
-      <body className="min-h-screen bg-[#f8fafc] text-slate-900 antialiased font-sans flex flex-col">
+    <html lang="en" className={`dark ${inter.variable} ${jetbrainsMono.variable}`}>
+      <body className="min-h-screen bg-[#070b12] text-slate-100 antialiased font-sans flex flex-col selection:bg-amber-500/30 selection:text-amber-200">
         {children}
       </body>
     </html>

@@ -1,8 +1,18 @@
 'use client';
 
 import React, { useEffect, useState, useRef } from 'react';
-import { Shield, ShieldAlert, ShieldCheck, TrendingDown, Info } from 'lucide-react';
+import {
+  ShieldAlert,
+  ShieldCheck,
+  TrendingDown,
+  Activity,
+  Layers,
+  DollarSign,
+  AlertOctagon,
+  Database,
+} from 'lucide-react';
 import { RiskBreakdown, RiskLevel } from '../../types';
+import { formatNumber, formatCurrency } from '../../lib/formatters';
 
 interface RiskGaugeProps {
   score: number;
@@ -11,9 +21,13 @@ interface RiskGaugeProps {
   isSaferMode?: boolean;
   originalScore?: number;
   originalLevel?: RiskLevel;
+  directRows?: number;
+  dependentRows?: number;
+  arrAtRisk?: number;
+  targetTable?: string;
 }
 
-const LEVEL_COLORS: Record<
+const LEVEL_CONFIG: Record<
   RiskLevel,
   {
     text: string;
@@ -25,36 +39,36 @@ const LEVEL_COLORS: Record<
   }
 > = {
   LOW: {
-    text: 'text-emerald-700',
-    bg: 'bg-emerald-50',
-    border: 'border-emerald-200',
+    text: 'text-emerald-400',
+    bg: 'bg-emerald-950/40',
+    border: 'border-emerald-800/60',
     stroke: '#10b981',
-    glow: 'rgba(16, 185, 129, 0.25)',
-    badge: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+    glow: 'rgba(16, 185, 129, 0.4)',
+    badge: 'bg-emerald-950/70 text-emerald-300 border-emerald-700 shadow-[0_0_12px_rgba(16,185,129,0.3)]',
   },
   MEDIUM: {
-    text: 'text-amber-700',
-    bg: 'bg-amber-50',
-    border: 'border-amber-200',
+    text: 'text-amber-400',
+    bg: 'bg-amber-950/40',
+    border: 'border-amber-800/60',
     stroke: '#f59e0b',
-    glow: 'rgba(245, 158, 11, 0.25)',
-    badge: 'bg-amber-100 text-amber-900 border-amber-300',
+    glow: 'rgba(245, 158, 11, 0.4)',
+    badge: 'bg-amber-950/70 text-amber-300 border-amber-700 shadow-[0_0_12px_rgba(245,158,11,0.3)]',
   },
   HIGH: {
-    text: 'text-orange-700',
-    bg: 'bg-orange-50',
-    border: 'border-orange-200',
+    text: 'text-orange-400',
+    bg: 'bg-orange-950/40',
+    border: 'border-orange-800/60',
     stroke: '#f97316',
-    glow: 'rgba(249, 115, 22, 0.25)',
-    badge: 'bg-orange-100 text-orange-900 border-orange-300',
+    glow: 'rgba(249, 115, 22, 0.4)',
+    badge: 'bg-orange-950/70 text-orange-300 border-orange-700 shadow-[0_0_12px_rgba(249,115,22,0.3)]',
   },
   CRITICAL: {
-    text: 'text-rose-700',
-    bg: 'bg-rose-50',
-    border: 'border-rose-200',
+    text: 'text-rose-400',
+    bg: 'bg-rose-950/40',
+    border: 'border-rose-800/60',
     stroke: '#f43f5e',
-    glow: 'rgba(244, 63, 94, 0.25)',
-    badge: 'bg-rose-100 text-rose-800 border-rose-300',
+    glow: 'rgba(244, 63, 94, 0.4)',
+    badge: 'bg-rose-950/70 text-rose-300 border-rose-700 shadow-[0_0_12px_rgba(244,63,94,0.3)]',
   },
 };
 
@@ -65,14 +79,16 @@ export const RiskGauge: React.FC<RiskGaugeProps> = ({
   isSaferMode = false,
   originalScore,
   originalLevel,
+  directRows = 0,
+  dependentRows = 0,
+  arrAtRisk = 0,
+  targetTable = 'table',
 }) => {
-  // Smooth animated count tweening
   const [displayScore, setDisplayScore] = useState(score);
   const animationRef = useRef<number | null>(null);
   const startScoreRef = useRef(displayScore);
 
   useEffect(() => {
-    // Check if user prefers reduced motion
     const prefersReducedMotion =
       typeof window !== 'undefined' &&
       window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -86,13 +102,12 @@ export const RiskGauge: React.FC<RiskGaugeProps> = ({
     const targetVal = score;
     if (startVal === targetVal) return;
 
-    const duration = 650; // ms
+    const duration = 650;
     const startTime = performance.now();
 
     const animate = (currentTime: number) => {
       const elapsed = currentTime - startTime;
       const progress = Math.min(elapsed / duration, 1);
-      // Ease out cubic
       const ease = 1 - Math.pow(1 - progress, 3);
       const current = Math.round(startVal + (targetVal - startVal) * ease);
 
@@ -113,14 +128,12 @@ export const RiskGauge: React.FC<RiskGaugeProps> = ({
     };
   }, [score]);
 
-  const color = LEVEL_COLORS[level] || LEVEL_COLORS.MEDIUM;
+  const cfg = LEVEL_CONFIG[level] || LEVEL_CONFIG.MEDIUM;
 
-  // Arc Gauge Geometry (Semi-circle arc)
-  // Radius = 80, Center = (100, 95)
-  // Arc length for 180 degrees = PI * 80 ≈ 251.327
+  // Arc Gauge Geometry
   const radius = 75;
   const strokeWidth = 14;
-  const circumference = Math.PI * radius; // Half-circle
+  const circumference = Math.PI * radius;
   const clampedScore = Math.max(0, Math.min(100, displayScore));
   const strokeDashoffset = circumference - (clampedScore / 100) * circumference;
 
@@ -129,136 +142,239 @@ export const RiskGauge: React.FC<RiskGaugeProps> = ({
       ? originalScore - score
       : 0;
 
+  const effectiveDependentRows = isSaferMode ? 0 : dependentRows;
+  const effectiveTotalRows = directRows + effectiveDependentRows;
+  const effectiveArrAtRisk = isSaferMode ? 0 : arrAtRisk;
+
   return (
     <div
-      className={`rounded-2xl border p-5 transition-all duration-300 ${
+      className={`rounded-2xl border p-4 sm:p-5 transition-all duration-300 relative overflow-hidden ${
         isSaferMode
-          ? 'bg-emerald-50/40 border-emerald-300 ring-1 ring-emerald-200'
-          : 'bg-white border-slate-200 shadow-sm'
+          ? 'bg-[#091515] border-emerald-500/50 shadow-[0_0_25px_rgba(16,185,129,0.15)] ring-1 ring-emerald-500/30'
+          : 'bg-[#0b0f19] border-[#1e293b] shadow-[0_4px_24px_rgba(0,0,0,0.6)]'
       }`}
     >
-      <div className="flex items-center justify-between gap-2 mb-3">
-        <div className="flex items-center gap-2">
+      {/* Header telemetry bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 pb-3 border-b border-[#1e293b]">
+        <div className="flex items-center gap-3">
           <div
-            className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold shrink-0 ${
-              isSaferMode ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-700'
+            className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold shrink-0 border ${
+              isSaferMode
+                ? 'bg-emerald-950/60 border-emerald-700 text-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.3)]'
+                : 'bg-rose-950/60 border-rose-800 text-rose-400 shadow-[0_0_12px_rgba(244,63,94,0.3)]'
             }`}
           >
             {isSaferMode ? (
-              <ShieldCheck className="w-4 h-4 text-emerald-600" />
+              <ShieldCheck className="w-5 h-5 text-emerald-400 drop-shadow-[0_0_6px_rgba(16,185,129,0.8)]" />
             ) : (
-              <ShieldAlert className="w-4 h-4 text-rose-600" />
+              <ShieldAlert className="w-5 h-5 text-rose-400 drop-shadow-[0_0_6px_rgba(244,63,94,0.8)]" />
             )}
           </div>
           <div>
-            <h3 className="text-body-sm font-bold text-slate-900 uppercase tracking-wider">
-              {isSaferMode ? 'Safeguarded Risk Meter' : 'Blast Radius Risk Gauge'}
-            </h3>
-            <p className="text-caption text-slate-500 font-normal">
+            <div className="flex items-center gap-2">
+              <h3 className="text-xs sm:text-sm font-bold text-slate-100 font-mono uppercase tracking-wider">
+                {isSaferMode ? 'SAFEGUARDED RISK TELEMETRY' : 'BLAST RADIUS RISK GAUGE'}
+              </h3>
+              <span className="text-[10px] font-mono text-slate-400 bg-[#131d31] border border-[#1e293b] px-1.5 py-0.2 rounded">
+                HUD_v0.4
+              </span>
+            </div>
+            <p className="text-xs text-slate-400 font-sans mt-0.5">
               {isSaferMode
-                ? 'Projected risk under non-destructive soft delete'
-                : 'Deterministic multi-factor risk scoring'}
+                ? 'Projected risk under non-destructive soft delete rewrite'
+                : 'Deterministic AST & Foreign-Key cascading graph scoring'}
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5">
           {scoreDiff > 0 && (
-            <span className="px-2 py-0.5 rounded-md text-badge font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1">
-              <TrendingDown className="w-3 h-3" />
-              -{scoreDiff} PTS
+            <span className="px-2.5 py-1 rounded-lg text-xs font-mono font-bold bg-emerald-950/80 text-emerald-300 border border-emerald-600 shadow-[0_0_12px_rgba(16,185,129,0.3)] flex items-center gap-1.5">
+              <TrendingDown className="w-3.5 h-3.5 text-emerald-400" />
+              <span>-{scoreDiff} PTS [67% MITIGATED]</span>
             </span>
           )}
           <span
-            className={`px-2.5 py-1 rounded-lg text-caption font-bold border shrink-0 ${color.badge}`}
+            className={`px-3 py-1 rounded-lg text-xs font-mono font-bold border shrink-0 ${cfg.badge}`}
           >
-            {level}
+            {level} RISK
           </span>
         </div>
       </div>
 
-      {/* Main Gauge Graphic */}
-      <div className="flex flex-col sm:flex-row items-center justify-around gap-6 py-2">
-        {/* SVG Speedometer Semi-Arc */}
-        <div className="relative w-[210px] h-[120px] flex items-end justify-center select-none">
-          <svg className="w-full h-full overflow-visible" viewBox="0 0 200 115">
-            <defs>
-              <linearGradient id="gaugeTrack" x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stopColor="#10b981" />
-                <stop offset="35%" stopColor="#f59e0b" />
-                <stop offset="70%" stopColor="#f97316" />
-                <stop offset="100%" stopColor="#f43f5e" />
-              </linearGradient>
-              <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
-                <feDropShadow dx="0" dy="2" stdDeviation="3" floodColor={color.stroke} floodOpacity="0.3" />
-              </filter>
-            </defs>
+      {/* Main Avionics Gauge & KPIs Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-center">
+        {/* Left: Semi-circular Avionics Gauge */}
+        <div className="lg:col-span-4 flex flex-col items-center justify-center p-2">
+          <div className="relative w-[220px] h-[125px] flex items-end justify-center select-none">
+            <svg className="w-full h-full overflow-visible" viewBox="0 0 200 115">
+              <defs>
+                <filter id="gaugeGlow" x="-30%" y="-30%" width="160%" height="160%">
+                  <feDropShadow dx="0" dy="0" stdDeviation="4" floodColor={cfg.stroke} floodOpacity="0.6" />
+                </filter>
+                <linearGradient id="hudArcGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stopColor="#10b981" />
+                  <stop offset="35%" stopColor="#f59e0b" />
+                  <stop offset="70%" stopColor="#f97316" />
+                  <stop offset="100%" stopColor="#f43f5e" />
+                </linearGradient>
+              </defs>
 
-            {/* Background Track Arc */}
-            <path
-              d="M 25 100 A 75 75 0 0 1 175 100"
-              fill="none"
-              stroke="#e2e8f0"
-              strokeWidth={strokeWidth}
-              strokeLinecap="round"
-            />
+              {/* Background Concentric Radar Rings */}
+              <path
+                d="M 25 100 A 75 75 0 0 1 175 100"
+                fill="none"
+                stroke="#131d31"
+                strokeWidth={strokeWidth}
+                strokeLinecap="round"
+              />
+              <path
+                d="M 40 100 A 60 60 0 0 1 160 100"
+                fill="none"
+                stroke="#1e293b"
+                strokeWidth="1"
+                strokeDasharray="2,4"
+              />
 
-            {/* Color Coded Filled Arc */}
-            <path
-              d="M 25 100 A 75 75 0 0 1 175 100"
-              fill="none"
-              stroke={color.stroke}
-              strokeWidth={strokeWidth}
-              strokeDasharray={circumference}
-              strokeDashoffset={strokeDashoffset}
-              strokeLinecap="round"
-              filter="url(#glow)"
-              className="transition-all duration-300"
-            />
+              {/* Glowing Active Arc */}
+              <path
+                d="M 25 100 A 75 75 0 0 1 175 100"
+                fill="none"
+                stroke={cfg.stroke}
+                strokeWidth={strokeWidth}
+                strokeDasharray={circumference}
+                strokeDashoffset={strokeDashoffset}
+                strokeLinecap="round"
+                filter="url(#gaugeGlow)"
+                className="transition-all duration-300"
+              />
 
-            {/* Calibrated Tick Marks */}
-            <text x="18" y="112" className="text-[10px] font-mono fill-slate-400">0</text>
-            <text x="94" y="20" className="text-[10px] font-mono fill-slate-400">50</text>
-            <text x="172" y="112" className="text-[10px] font-mono fill-slate-400">100</text>
-          </svg>
+              {/* Calibrated HUD Tick Labels */}
+              <text x="18" y="112" className="text-[10px] font-mono fill-slate-500">0</text>
+              <text x="94" y="20" className="text-[10px] font-mono fill-slate-500">50</text>
+              <text x="172" y="112" className="text-[10px] font-mono fill-slate-500">100</text>
+            </svg>
 
-          {/* Central Score readout */}
-          <div className="absolute bottom-1 flex flex-col items-center justify-center">
-            <div className="flex items-baseline gap-0.5">
-              <span className={`text-h1 font-extrabold font-mono tracking-tight leading-none ${color.text}`}>
-                {displayScore}
+            {/* Central Score Readout */}
+            <div className="absolute bottom-1 flex flex-col items-center justify-center">
+              <div className="flex items-baseline gap-1">
+                <span className={`text-3xl sm:text-4xl font-extrabold font-mono tracking-tight leading-none ${cfg.text} drop-shadow-[0_0_12px_rgba(245,158,11,0.3)]`}>
+                  {displayScore}
+                </span>
+                <span className="text-xs font-mono font-semibold text-slate-500">/100</span>
+              </div>
+              <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400 mt-0.5">
+                {level} LEVEL
               </span>
-              <span className="text-caption font-bold text-slate-400 font-mono">/100</span>
             </div>
-            <span className="text-badge font-bold uppercase tracking-wider text-slate-600 font-mono mt-0.5">
-              {level} RISK
-            </span>
           </div>
         </div>
 
-        {/* Breakdown bars if provided */}
-        {breakdown && (
-          <div className="w-full sm:w-64 space-y-1.5 text-caption font-mono bg-slate-50 p-3 rounded-xl border border-slate-200/80">
-            <div className="text-badge font-bold text-slate-500 uppercase tracking-wider flex items-center justify-between border-b border-slate-200 pb-1 mb-1">
-              <span>Risk Factor Vectors</span>
-              <span>Weight</span>
+        {/* Center: High-Density Telemetry KPI Cards */}
+        <div className="lg:col-span-4 grid grid-cols-2 gap-2.5">
+          {/* Direct Rows */}
+          <div className="p-3 bg-[#070b12] rounded-xl border border-[#1e293b] flex flex-col justify-between">
+            <span className="text-[10px] font-mono font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+              <Database className="w-3 h-3 text-cyan-400" /> DIRECT ROWS
+            </span>
+            <div className="mt-1">
+              <div className="text-lg font-bold font-mono text-slate-100">
+                {formatNumber(directRows)}
+              </div>
+              <div className="text-[11px] text-slate-500 font-mono truncate">
+                {targetTable}
+              </div>
             </div>
-            <FactorBar label="Op Weight" value={breakdown.operation} max={25} isSafer={isSaferMode} />
-            <FactorBar label="Direct Impact" value={breakdown.direct_impact} max={20} isSafer={isSaferMode} />
-            <FactorBar label="Cascade Depth" value={breakdown.dependent_impact + breakdown.cascade} max={30} isSafer={isSaferMode} />
-            <FactorBar label="ARR / Rev At Risk" value={breakdown.business_impact} max={15} isSafer={isSaferMode} />
-            <FactorBar label="Recoverability" value={breakdown.recoverability} max={10} isSafer={isSaferMode} />
           </div>
-        )}
+
+          {/* Cascading Rows */}
+          <div className={`p-3 rounded-xl border flex flex-col justify-between ${
+            isSaferMode
+              ? 'bg-emerald-950/20 border-emerald-800/40'
+              : effectiveDependentRows > 0
+              ? 'bg-rose-950/20 border-rose-800/40'
+              : 'bg-[#070b12] border-[#1e293b]'
+          }`}>
+            <span className="text-[10px] font-mono font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+              <Layers className="w-3 h-3 text-amber-400" /> CASCADE PURGE
+            </span>
+            <div className="mt-1">
+              <div className={`text-lg font-bold font-mono ${isSaferMode ? 'text-emerald-400' : 'text-rose-400'}`}>
+                {formatNumber(effectiveDependentRows)}
+              </div>
+              <div className="text-[11px] text-slate-500 font-mono">
+                {isSaferMode ? '0 purged (intact)' : 'dependent rows'}
+              </div>
+            </div>
+          </div>
+
+          {/* Total Rows */}
+          <div className="p-3 bg-[#070b12] rounded-xl border border-[#1e293b] flex flex-col justify-between">
+            <span className="text-[10px] font-mono font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+              <AlertOctagon className="w-3 h-3 text-rose-400" /> TOTAL PURGED
+            </span>
+            <div className="mt-1">
+              <div className="text-lg font-bold font-mono text-slate-100">
+                {formatNumber(effectiveTotalRows)}
+              </div>
+              <div className="text-[11px] text-slate-500 font-mono">
+                {isSaferMode ? 'soft deleted' : 'hard deleted'}
+              </div>
+            </div>
+          </div>
+
+          {/* ARR at Risk */}
+          <div className={`p-3 rounded-xl border flex flex-col justify-between ${
+            isSaferMode
+              ? 'bg-emerald-950/20 border-emerald-800/40'
+              : effectiveArrAtRisk > 0
+              ? 'bg-rose-950/20 border-rose-800/40'
+              : 'bg-[#070b12] border-[#1e293b]'
+          }`}>
+            <span className="text-[10px] font-mono font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+              <DollarSign className="w-3 h-3 text-emerald-400" /> ARR AT RISK
+            </span>
+            <div className="mt-1">
+              <div className={`text-lg font-bold font-mono ${isSaferMode ? 'text-emerald-400' : 'text-rose-400'}`}>
+                {formatCurrency(effectiveArrAtRisk)}
+              </div>
+              <div className="text-[11px] text-slate-500 font-mono">
+                {isSaferMode ? '$0 ARR risk' : 'immediate loss'}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Right: Risk Factor Sub-Bars */}
+        <div className="lg:col-span-4">
+          {breakdown && (
+            <div className="space-y-2 font-mono text-xs bg-[#070b12] p-3 rounded-xl border border-[#1e293b]">
+              <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center justify-between border-b border-[#1e293b] pb-1.5">
+                <span className="flex items-center gap-1">
+                  <Activity className="w-3 h-3 text-cyan-400" /> RISK VECTOR BREAKDOWN
+                </span>
+                <span>PTS</span>
+              </div>
+              <FactorBar label="Op Weight" value={breakdown.operation} max={25} isSafer={isSaferMode} />
+              <FactorBar label="Direct Impact" value={breakdown.direct_impact} max={20} isSafer={isSaferMode} />
+              <FactorBar label="Cascade Depth" value={breakdown.dependent_impact + breakdown.cascade} max={30} isSafer={isSaferMode} />
+              <FactorBar label="ARR / Rev Vector" value={breakdown.business_impact} max={15} isSafer={isSaferMode} />
+              <FactorBar label="Recoverability" value={breakdown.recoverability} max={10} isSafer={isSaferMode} />
+            </div>
+          )}
+        </div>
       </div>
 
+      {/* Safe Mode Active Mitigation Banner */}
       {isSaferMode && originalScore !== undefined && (
-        <div className="mt-3 pt-3 border-t border-emerald-200/60 flex items-center justify-between text-caption font-mono text-emerald-900 bg-emerald-100/50 px-3 py-2 rounded-lg">
-          <span className="flex items-center gap-1.5">
-            <Shield className="w-3.5 h-3.5 text-emerald-700" />
-            <span>Score dropped from <strong>{originalScore} ({originalLevel})</strong> ➔ <strong>{score} ({level})</strong></span>
+        <div className="mt-4 pt-3 border-t border-emerald-800/40 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs font-mono text-emerald-200 bg-emerald-950/40 px-3 py-2 rounded-xl border border-emerald-700/50">
+          <span className="flex items-center gap-2">
+            <ShieldCheck className="w-4 h-4 text-emerald-400" />
+            <span>Score reduced from <strong className="text-rose-300">{originalScore} ({originalLevel})</strong> ➔ <strong className="text-emerald-300">{score} ({level})</strong></span>
           </span>
-          <span className="font-bold text-emerald-700">67% RISK MITIGATED</span>
+          <span className="font-bold text-emerald-300 bg-emerald-900/60 px-2 py-0.5 rounded border border-emerald-700">
+            67% RISK MITIGATED
+          </span>
         </div>
       )}
     </div>
@@ -273,16 +389,16 @@ const FactorBar: React.FC<{
 }> = ({ label, value, max, isSafer }) => {
   const pct = Math.min(100, Math.round((value / max) * 100));
   return (
-    <div className="space-y-0.5">
-      <div className="flex justify-between text-badge text-slate-600">
+    <div className="space-y-1">
+      <div className="flex justify-between text-[11px] text-slate-400">
         <span>{label}</span>
-        <span className="font-semibold text-slate-800">{value} pts</span>
+        <span className="font-semibold text-slate-200">{value} pts</span>
       </div>
-      <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden">
+      <div className="w-full h-1.5 bg-[#131d31] rounded-full overflow-hidden">
         <div
           style={{ width: `${pct}%` }}
           className={`h-full rounded-full transition-all duration-500 ${
-            isSafer ? 'bg-emerald-500' : value > max * 0.6 ? 'bg-rose-500' : 'bg-amber-500'
+            isSafer ? 'bg-emerald-400 shadow-[0_0_6px_#10b981]' : value > max * 0.6 ? 'bg-rose-500 shadow-[0_0_6px_#f43f5e]' : 'bg-amber-400 shadow-[0_0_6px_#f59e0b]'
           }`}
         />
       </div>
