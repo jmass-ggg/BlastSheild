@@ -306,6 +306,8 @@ API CONTRACT CHANGES: NONE for Day 4.
 | PR | What Qodo surfaced | Our decision |
 |----|-------------------|--------------|
 | [#3 — docs: README hook + why-blastshield section](https://github.com/jmass-ggg/BlastSheild/pull/3) | 3 MEDIUM bugs: (1) flow diagram implied safer-SQL was executable via BlastShield when it is preview+copy only; (2) test count stated as 53 instead of 81; (3) PR evidence row linked to /pulls instead of a specific PR | All three fixed in follow-up commit on this branch before merge |
+| [#4 — feat(ui): add cancelled subscriptions preset query](https://github.com/jmass-ggg/BlastSheild/pull/4) | 0 bugs / clean review — verified safe query preset expansion and frontend type consistency | Approved and merged cleanly |
+| [#5 — feat(api): add structured error remediation guidance](https://github.com/jmass-ggg/BlastSheild/pull/5) | 2 HIGH bugs: (1) remediation guidance captured by client but never displayed in UI, (2) ExecutionFailedError advised blind retries risking duplicate deletions | Fixed both HIGH findings: added remediation UI alerts in dashboard/modal and corrected retry safety text |
 
 > **How we work with Qodo findings:**
 > Every PR opens automatically triggering a Qodo agentic review.
