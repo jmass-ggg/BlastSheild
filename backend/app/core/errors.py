@@ -115,5 +115,5 @@ class ExecutionFailedError(BlastShieldError):
             "EXECUTION_FAILED",
             message,
             status_code=500,
-            remediation="Check database logs and transaction lock status, then submit a new analysis.",
+            remediation="Do not retry blindly; inspect database logs and reconcile domain state before attempting another operation.",
         )
