@@ -1,146 +1,39 @@
-import { ImpactResult } from '../types';
+/**
+ * Demo statements against the seeded `public` schema in database/init.
+ * The analyzer only accepts a single DELETE, so every preset is a DELETE.
+ */
+export interface PresetQuery {
+  key: string;
+  label: string;
+  hint: string;
+  sql: string;
+}
 
-export const PRESET_QUERIES: Record<string, ImpactResult> = {
-  inactive_2y: {
-    id: 'inactive_2y',
-    promptText: 'Delete inactive customers older than 2 years',
-    originalSql: "DELETE FROM users WHERE last_login < NOW() - INTERVAL '2 years';",
-    originalRisk: 85,
-    originalRiskLevel: 'CRITICAL',
-    originalDirectRows: 12481,
-    originalCascadeRows: 36134,
-    targetTable: 'users',
-    affectedTableMap: {
-      users: { count: 12481, role: 'DIRECT' },
-      orders: { count: 21003, role: 'CASCADE' },
-      payments: { count: 18201, role: 'CASCADE' },
-      subscriptions: { count: 347, role: 'CASCADE' },
-      invoices: { count: 5102, role: 'CASCADE' },
-      sessions: { count: 9682, role: 'CASCADE' },
-    },
-    mrrLost: 6116,
-    arrLost: 73392,
-    activeSubsLost: 347,
-    originalRollback: 'Hard / Requires full cold backup restore',
-    saferSql: "UPDATE users SET deleted_at = NOW() WHERE last_login < NOW() - INTERVAL '2 years';",
-    saferRisk: 34,
-    saferRiskLevel: 'LOW',
-    saferDirectRows: 12481,
-    saferCascadeRows: 0,
-    saferRollback: '1-Click instant SQL undo (UPDATE users SET deleted_at = NULL)',
-    saferBenefits: [
-      'Drops risk from 85 CRITICAL → 34 LOW',
-      '0 cascading records deleted (preserves 21,003 orders & payments)',
-      'Protects 347 active billing accounts ($73.4K ARR intact)',
-      '100% reversible soft-delete timestamp',
-    ],
-  },
-  staging_trials: {
-    id: 'staging_trials',
-    promptText: 'Clean up inactive sandbox trial accounts with no activity since Q1',
-    originalSql: "DELETE FROM users WHERE last_login < '2024-01-01' AND is_trial = true;",
-    originalRisk: 34,
-    originalRiskLevel: 'LOW',
-    originalDirectRows: 40,
-    originalCascadeRows: 252,
-    targetTable: 'users',
-    affectedTableMap: {
-      users: { count: 40, role: 'DIRECT' },
-      orders: { count: 92, role: 'CASCADE' },
-      payments: { count: 88, role: 'CASCADE' },
-      subscriptions: { count: 14, role: 'CASCADE' },
-      sessions: { count: 58, role: 'CASCADE' },
-    },
-    mrrLost: 406,
-    arrLost: 4872,
-    activeSubsLost: 14,
-    originalRollback: 'Hard row purge',
-    saferSql: "UPDATE users SET deleted_at = NOW(), status = 'archived' WHERE last_login < '2024-01-01' AND is_trial = true;",
-    saferRisk: 12,
-    saferRiskLevel: 'LOW',
-    saferDirectRows: 40,
-    saferCascadeRows: 0,
-    saferRollback: 'Instant status reversal',
-    saferBenefits: [
-      'Preserves 252 downstream history records',
-      'Protects $406 MRR trial conversions',
-      'Zero cascading foreign key deletes',
-    ],
-  },
-  truncate_orders: {
-    id: 'truncate_orders',
-    promptText: 'Clear out staging orders table before migration',
-    originalSql: 'TRUNCATE TABLE orders CASCADE;',
-    originalRisk: 96,
-    originalRiskLevel: 'CRITICAL',
-    originalDirectRows: 100000,
-    originalCascadeRows: 90000,
-    targetTable: 'orders',
-    affectedTableMap: {
-      orders: { count: 100000, role: 'DIRECT' },
-      payments: { count: 90000, role: 'CASCADE' },
-    },
-    mrrLost: 0,
-    arrLost: 1850000,
-    activeSubsLost: 0,
-    originalRollback: 'Irreversible data loss',
-    saferSql: "DELETE FROM orders WHERE status = 'draft' AND created_at < NOW() - INTERVAL '90 days';",
-    saferRisk: 28,
-    saferRiskLevel: 'LOW',
-    saferDirectRows: 4200,
-    saferCascadeRows: 0,
-    saferRollback: 'Transactional scope',
-    saferBenefits: [
-      'Preserves 95,800 paid customer order records',
-      'Targets only abandoned draft carts',
-      'Zero payment ledger records deleted',
-    ],
-  },
-  discount_subs: {
-    id: 'discount_subs',
-    promptText: 'Update active subscription prices with 10% loyalty discount',
-    originalSql: "UPDATE subscriptions SET monthly_price = monthly_price * 0.9 WHERE status = 'active';",
-    originalRisk: 22,
-    originalRiskLevel: 'LOW',
-    originalDirectRows: 15000,
-    originalCascadeRows: 0,
-    targetTable: 'subscriptions',
-    affectedTableMap: {
-      subscriptions: { count: 15000, role: 'DIRECT' },
-    },
-    mrrLost: 420,
-    arrLost: 5040,
-    activeSubsLost: 0,
-    originalRollback: 'Requires price recalculation',
-    saferSql: "UPDATE subscriptions SET monthly_price = monthly_price * 0.9 WHERE status = 'active' AND discount_applied = false;",
-    saferRisk: 14,
-    saferRiskLevel: 'LOW',
-    saferDirectRows: 12400,
-    saferCascadeRows: 0,
-    saferRollback: 'Audit-flagged update',
-    saferBenefits: [
-      'Prevents double-discounting already discounted accounts',
-      '0 cascading deletes',
-      'Safe additive modification',
-    ],
-  },
-};
-
-export const PRESET_OPTIONS = [
+export const PRESET_QUERIES: PresetQuery[] = [
   {
-    key: 'inactive_2y',
-    label: '🔥 Delete Inactive Customers (2y+) · 85 CRITICAL',
+    key: 'inactive_users',
+    label: 'Delete inactive customers (2y+)',
+    hint: 'Cascades into orders, payments, subscriptions and sessions',
+    sql: "DELETE FROM users WHERE last_login < NOW() - INTERVAL '2 years';",
   },
   {
-    key: 'staging_trials',
-    label: '⚡ Clean Up Staging Accounts · 34 LOW',
+    key: 'refunded_orders',
+    label: 'Purge refunded orders',
+    hint: 'Cascades into the payments ledger',
+    sql: "DELETE FROM orders WHERE status = 'refunded';",
   },
   {
-    key: 'truncate_orders',
-    label: '⚡ Truncate Orders Table · 96 CRITICAL',
+    key: 'expired_sessions',
+    label: 'Clear expired sessions',
+    hint: 'Leaf table — no downstream dependents',
+    sql: 'DELETE FROM sessions WHERE expires_at < NOW();',
   },
   {
-    key: 'discount_subs',
-    label: '⚡ Apply 10% Loyalty Discount · Safe UPDATE',
+    key: 'unguarded_delete',
+    label: 'Delete every user (no WHERE)',
+    hint: 'Worst case — full-table delete across the whole graph',
+    sql: 'DELETE FROM users;',
   },
 ];
+
+export const DEFAULT_SQL = PRESET_QUERIES[0].sql;

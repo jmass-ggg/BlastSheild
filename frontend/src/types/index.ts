@@ -1,8 +1,13 @@
-export type RiskLevel = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+import type {
+  DependencyImpact,
+  RiskBreakdown,
+  RiskLevel,
+  TimelineItem,
+} from './api';
+
+export type { RiskLevel };
 
 export type ImpactRole = 'DIRECT' | 'CASCADE' | 'UNAFFECTED';
-
-export type ExecutionMode = 'SAFER' | 'ORIGINAL';
 
 export interface SchemaColumn {
   name: string;
@@ -26,33 +31,45 @@ export interface TableImpactInfo {
   role: 'DIRECT' | 'CASCADE';
 }
 
-export interface ImpactResult {
-  id: string;
-  promptText: string;
+export interface SaferAlternativeView {
+  available: boolean;
+  sql: string | null;
+  riskScore: number | null;
+  riskLevel: RiskLevel | null;
+}
+
+/**
+ * Flattened view of a backend `AnalysisResponse`, shaped for the cards and the
+ * schema graph. Built by `adaptAnalysis` — never hand-constructed.
+ */
+export interface AnalysisView {
+  analysisId: string;
+  status: string;
+  requiresApproval: boolean;
+
+  /** The SQL that was submitted; the report itself does not echo it back. */
+  sql: string;
+  operation: string;
   targetTable: string;
-  
-  // Original Destructive Action
-  originalSql: string;
-  originalRisk: number;
-  originalRiskLevel: RiskLevel;
-  originalDirectRows: number;
-  originalCascadeRows: number;
-  mrrLost: number;
-  arrLost: number;
-  activeSubsLost: number;
-  originalRollback: string;
-  
-  // Safer Alternative Recommendation
-  saferSql: string;
-  saferRisk: number;
-  saferRiskLevel: 'LOW' | 'MEDIUM';
-  saferDirectRows: number;
-  saferCascadeRows: number;
-  saferRollback: string;
-  saferBenefits: string[];
-  
-  // Table Breakdown Map
+  hasWhere: boolean;
+
+  riskScore: number;
+  riskLevel: RiskLevel;
+  riskReasons: string[];
+  riskBreakdown: RiskBreakdown;
+
+  directRows: number;
+  dependentRows: number;
+  totalRows: number;
+  dependencies: DependencyImpact[];
+
+  activeSubscriptions: number;
+  mrrAtRisk: number;
+  arrAtRisk: number;
+
+  safer: SaferAlternativeView;
   affectedTableMap: Record<string, TableImpactInfo>;
+  timeline: TimelineItem[];
 }
 
 export interface ERNodePosition {

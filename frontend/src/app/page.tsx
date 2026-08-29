@@ -1,102 +1,140 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { Header } from '../components/layout/Header';
 import { PromptSection } from '../components/prompt/PromptSection';
 import { ImpactComparison } from '../components/impact/ImpactComparison';
 import { SchemaSection } from '../components/schema/SchemaSection';
 import { ExecutionModal } from '../components/execution/ExecutionModal';
 import { DATABASE_SCHEMA } from '../constants/databaseSchema';
-import { PRESET_QUERIES } from '../constants/presetQueries';
-import { ImpactResult, ExecutionMode } from '../types';
+import { DEFAULT_SQL, PRESET_QUERIES } from '../constants/presetQueries';
+import { ApiError, analyze, rejectAnalysis } from '../lib/apiClient';
+import { adaptAnalysis } from '../lib/adaptAnalysis';
+import { AnalysisView } from '../types';
 
 export default function Home() {
-  const [promptInput, setPromptInput] = useState<string>('Delete inactive customers older than 2 years');
-  const [activeImpact, setActiveImpact] = useState<ImpactResult>(PRESET_QUERIES['inactive_2y']);
-  const [activePresetKey, setActivePresetKey] = useState<string>('inactive_2y');
-  const [isSimulating, setIsSimulating] = useState<boolean>(false);
+  const [sql, setSql] = useState<string>(DEFAULT_SQL);
+  const [activePresetKey, setActivePresetKey] = useState<string | null>(
+    PRESET_QUERIES[0].key
+  );
+
+  const [view, setView] = useState<AnalysisView | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analyzeError, setAnalyzeError] = useState<string | null>(null);
+
   const [selectedTable, setSelectedTable] = useState<string>('users');
-  const [executingMode, setExecutingMode] = useState<ExecutionMode | null>(null);
+  const [isExecuteOpen, setIsExecuteOpen] = useState(false);
+  const [isRejecting, setIsRejecting] = useState(false);
 
-  // Analysis simulator handler
-  const handleRunAnalysis = (overrideText?: string) => {
-    const text = overrideText || promptInput;
-    if (!text.trim() || isSimulating) return;
+  const runAnalysis = useCallback(async (statement: string) => {
+    const trimmed = statement.trim();
+    if (!trimmed) return;
 
-    setIsSimulating(true);
-
-    let result = PRESET_QUERIES['inactive_2y'];
-    const lower = text.toLowerCase();
-
-    if (lower.includes('trial') || lower.includes('staging') || lower.includes('q1') || lower.includes('8f42k')) {
-      result = PRESET_QUERIES['staging_trials'];
-    } else if (lower.includes('truncate') || lower.includes('clear') || lower.includes('order')) {
-      result = PRESET_QUERIES['truncate_orders'];
-    } else if (lower.includes('discount') || lower.includes('price') || lower.includes('update')) {
-      result = PRESET_QUERIES['discount_subs'];
-    } else {
-      result = {
-        ...PRESET_QUERIES['inactive_2y'],
-        promptText: text,
-      };
+    setIsAnalyzing(true);
+    setAnalyzeError(null);
+    try {
+      const report = await analyze({ sql: trimmed, source: 'ui' });
+      const adapted = adaptAnalysis(report, trimmed);
+      setView(adapted);
+      setSelectedTable(adapted.targetTable);
+    } catch (caught) {
+      setView(null);
+      setAnalyzeError(
+        caught instanceof ApiError
+          ? `${caught.code}: ${caught.message}`
+          : 'An unexpected error occurred while analyzing.'
+      );
+    } finally {
+      setIsAnalyzing(false);
     }
-
-    setTimeout(() => {
-      setActiveImpact(result);
-      setSelectedTable(result.targetTable);
-      setIsSimulating(false);
-    }, 400);
-  };
+  }, []);
 
   const handleSelectPreset = (presetKey: string) => {
-    const preset = PRESET_QUERIES[presetKey];
+    const preset = PRESET_QUERIES.find((item) => item.key === presetKey);
     if (!preset) return;
-
-    setActivePresetKey(presetKey);
-    setPromptInput(preset.promptText);
-    handleRunAnalysis(preset.promptText);
+    setActivePresetKey(preset.key);
+    setSql(preset.sql);
+    void runAnalysis(preset.sql);
   };
+
+  const handleChangeSql = (value: string) => {
+    setSql(value);
+    setActivePresetKey(null);
+  };
+
+  const handleReject = async () => {
+    if (!view) return;
+    setIsRejecting(true);
+    try {
+      const transition = await rejectAnalysis(view.analysisId, { actor: 'ui' });
+      setView({ ...view, status: transition.status });
+    } catch (caught) {
+      setAnalyzeError(
+        caught instanceof ApiError
+          ? `${caught.code}: ${caught.message}`
+          : 'Rejecting the analysis failed.'
+      );
+    } finally {
+      setIsRejecting(false);
+    }
+  };
+
+  const handleStatusChange = useCallback((status: string) => {
+    setView((current) => (current ? { ...current, status } : current));
+  }, []);
 
   return (
     <div className="min-h-screen bg-[#f8fafc] text-slate-900 flex flex-col font-sans">
-      {/* Top Enterprise Header */}
       <Header />
 
-      {/* Main Orchestrator Body */}
       <main className="max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 space-y-6 flex-1">
-        
-        {/* 1. Prompt & Preset Input Section */}
         <PromptSection
-          promptInput={promptInput}
-          onChangePrompt={setPromptInput}
-          onSubmit={() => handleRunAnalysis()}
-          isSimulating={isSimulating}
+          sql={sql}
+          onChangeSql={handleChangeSql}
+          onSubmit={() => void runAnalysis(sql)}
+          isAnalyzing={isAnalyzing}
           onSelectPreset={handleSelectPreset}
           activePresetKey={activePresetKey}
+          error={analyzeError}
         />
 
-        {/* 2. Side-by-Side Impact & Safer Alternative Comparison */}
-        <ImpactComparison
-          impact={activeImpact}
-          onExecute={(mode) => setExecutingMode(mode)}
-        />
+        {view ? (
+          <ImpactComparison
+            view={view}
+            onExecute={() => setIsExecuteOpen(true)}
+            onReject={() => void handleReject()}
+            isRejecting={isRejecting}
+          />
+        ) : (
+          <EmptyState isAnalyzing={isAnalyzing} />
+        )}
 
-        {/* 3. Interactive Schema with ER Connected Lines */}
         <SchemaSection
           tables={DATABASE_SCHEMA}
-          affectedMap={activeImpact.affectedTableMap}
+          affectedMap={view?.affectedTableMap ?? {}}
           selectedTable={selectedTable}
-          onSelectTable={(table) => setSelectedTable(table)}
+          onSelectTable={setSelectedTable}
         />
-
       </main>
 
-      {/* 4. Production Execution Modal */}
-      <ExecutionModal
-        mode={executingMode}
-        impact={activeImpact}
-        onClose={() => setExecutingMode(null)}
-      />
+      {view && (
+        <ExecutionModal
+          open={isExecuteOpen}
+          view={view}
+          onClose={() => setIsExecuteOpen(false)}
+          onStatusChange={handleStatusChange}
+        />
+      )}
     </div>
   );
 }
+
+const EmptyState: React.FC<{ isAnalyzing: boolean }> = ({ isAnalyzing }) => (
+  <section className="bg-white rounded-2xl border border-dashed border-slate-300 p-12 text-center">
+    <p className="text-body-sm text-slate-500 font-normal">
+      {isAnalyzing
+        ? 'Measuring blast radius against production metadata...'
+        : 'Run an impact analysis to see the blast radius and safer alternative.'}
+    </p>
+  </section>
+);
