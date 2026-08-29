@@ -1,11 +1,28 @@
 # BlastShield
 
-BlastShield is a real-time safety gateway and visual intelligence dashboard for PostgreSQL `DELETE` statements proposed by
-AI agents. It intercepts destructive queries, analyzes the live foreign-key blast radius, calculates deterministic risk,
-presents an interactive dependency graph and safer soft-delete alternative, requires human approval, revalidates state against production, and executes approved
-statements in isolated transactions.
+> **An AI agent proposed `DELETE FROM users WHERE last_login < NOW() - INTERVAL '2 years'`.**
+> BlastShield intercepted it, calculated **40 direct rows → 252 cascading dependents → 14 active subscriptions → $406 MRR at risk → Risk 60 / HIGH**, showed the human a dependency graph and a safe soft-delete alternative, waited for approval, revalidated against production, then executed — all in one auditable lifecycle.
 
-This repository contains the complete full-stack platform: the Next.js interactive frontend (featuring React Flow blast-radius DAG and risk gauge), FastAPI safety gateway, PostgreSQL schema fixture and control-plane migrations, controlled MCP bridge, comprehensive test suite, and demo preflight/rehearsal tooling.
+BlastShield is a **safety gateway and visual intelligence dashboard** for destructive PostgreSQL operations proposed by AI agents. It turns a dangerous one-liner into a fully-audited, human-approved action with zero guesswork.
+
+```
+AI Agent proposes DELETE
+        │
+        ▼  (MCP intercept)
+  BlastShield analyzes
+  ├─ FK blast-radius DAG    → 40 direct + 252 cascade rows
+  ├─ Business impact        → 14 subscriptions, $406 MRR at risk
+  ├─ Risk score             → 60 / HIGH
+  └─ Safer alternative      → soft-delete UPDATE + batch suggestion
+        │
+        ▼  (human reviews the visual dashboard)
+  Human: Approve / Reject / Use safer version
+        │
+        ▼  (revalidation against live production)
+  Execution committed — 40 rows deleted, cascades measured
+```
+
+This repository contains the complete full-stack platform: **Next.js** interactive frontend (React Flow blast-radius DAG, risk gauge, side-by-side safer-alternative diff), **FastAPI** safety gateway, PostgreSQL schema fixture and control-plane migrations, controlled MCP bridge, comprehensive 53-test suite, and demo preflight/rehearsal tooling.
 
 ## Architecture
 
@@ -286,11 +303,15 @@ API CONTRACT CHANGES: NONE for Day 4.
 
 ### Representative reviewed PRs
 
-<!-- Update this table with real PR links after the first reviewed merge. -->
-
 | PR | What Qodo surfaced | Our decision |
 |----|-------------------|--------------|
-| [#1 — Initial backend](https://github.com/jmass-ggg/BlastSheild/pulls) | *(fill in after first review)* | *(fill in)* |
+| [#1 — docs: README hook + why-blastshield section](https://github.com/jmass-ggg/BlastSheild/pulls) | *Pending Qodo review — link will be updated after merge* | *See PR thread* |
+
+> **How we work with Qodo findings:**
+> Every PR opens automatically triggering a Qodo agentic review.
+> - **HIGH** findings → fixed before merge, or dismissed in the Qodo thread with a written reason.
+> - **MEDIUM / LOW** → our engineering call; decision noted in the PR description.
+> - After addressing findings we push a follow-up commit and Qodo re-reviews automatically.
 
 ### How to reproduce a review
 
@@ -301,8 +322,8 @@ git checkout -b feat/your-feature
 git commit -m "feat: your feature"
 git push binato feat/your-feature
 
-# 2. Open a PR on GitHub — Qodo reviews automatically.
-#    Or, on an existing PR, post:
+# 2. Open a PR on GitHub — Qodo reviews automatically within ~60 seconds.
+#    Or trigger on demand by commenting on any open PR:
 /agentic_review
 
 # 3. Fix HIGH findings, dismiss with reason if intentional, then push again.
