@@ -41,6 +41,7 @@ export const ExecutionModal: React.FC<ExecutionModalProps> = ({
   const [step, setStep] = useState('');
   const [result, setResult] = useState<ExecutionResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [errorRemediation, setErrorRemediation] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
@@ -49,12 +50,14 @@ export const ExecutionModal: React.FC<ExecutionModalProps> = ({
       setStep('');
       setResult(null);
       setError(null);
+      setErrorRemediation(null);
     }
   }, [open, view.analysisId]);
 
   const run = useCallback(async () => {
     setPhase('running');
     setError(null);
+    setErrorRemediation(null);
     try {
       // A retry after a failed execute finds the analysis already APPROVED;
       // approving twice is a 409, so only transition when still pending.
@@ -82,11 +85,13 @@ export const ExecutionModal: React.FC<ExecutionModalProps> = ({
         // Confetti is decorative; a blocked canvas must not break the flow.
       }
     } catch (caught) {
-      setError(
-        caught instanceof ApiError
-          ? `${caught.code}: ${caught.message}`
-          : 'An unexpected error occurred.'
-      );
+      if (caught instanceof ApiError) {
+        setError(`${caught.code}: ${caught.message}`);
+        setErrorRemediation(caught.remediation ?? null);
+      } else {
+        setError('An unexpected error occurred.');
+        setErrorRemediation(null);
+      }
       setPhase('error');
     }
   }, [view.analysisId, view.status, onStatusChange]);
@@ -252,6 +257,11 @@ export const ExecutionModal: React.FC<ExecutionModalProps> = ({
               <p className="text-body-sm text-slate-600 mt-1 font-normal break-words">
                 {error}
               </p>
+              {errorRemediation && (
+                <div className="mt-3 p-3 bg-amber-50 rounded-xl border border-amber-200 text-caption text-amber-900 text-left">
+                  <strong className="font-semibold text-amber-950">Action required:</strong> {errorRemediation}
+                </div>
+              )}
             </div>
             <div className="flex gap-2.5">
               <button

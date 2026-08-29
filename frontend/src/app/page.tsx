@@ -42,11 +42,14 @@ export default function Home() {
       setSelectedTable(adapted.targetTable);
     } catch (caught) {
       setView(null);
-      setAnalyzeError(
-        caught instanceof ApiError
-          ? `${caught.code}: ${caught.message}`
-          : 'An unexpected error occurred while analyzing.'
-      );
+      if (caught instanceof ApiError) {
+        const detail = caught.remediation
+          ? `${caught.code}: ${caught.message} (${caught.remediation})`
+          : `${caught.code}: ${caught.message}`;
+        setAnalyzeError(detail);
+      } else {
+        setAnalyzeError('An unexpected error occurred while analyzing.');
+      }
     } finally {
       setIsAnalyzing(false);
     }
@@ -72,11 +75,14 @@ export default function Home() {
       const transition = await rejectAnalysis(view.analysisId, { actor: 'ui' });
       setView({ ...view, status: transition.status });
     } catch (caught) {
-      setAnalyzeError(
-        caught instanceof ApiError
-          ? `${caught.code}: ${caught.message}`
-          : 'Rejecting the analysis failed.'
-      );
+      if (caught instanceof ApiError) {
+        const detail = caught.remediation
+          ? `${caught.code}: ${caught.message} (${caught.remediation})`
+          : `${caught.code}: ${caught.message}`;
+        setAnalyzeError(detail);
+      } else {
+        setAnalyzeError('Rejecting the analysis failed.');
+      }
     } finally {
       setIsRejecting(false);
     }
