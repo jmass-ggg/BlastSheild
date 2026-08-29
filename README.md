@@ -252,3 +252,60 @@ and volume. Do not use it for a real database.
   mode, and error codes, but not SQL rows or credentials.
 
 API CONTRACT CHANGES: NONE for Day 4.
+
+---
+
+## Qodo Code Review Evidence
+
+> **Required by the [TrueForge hackathon](https://www.wemakedevs.org/hackathons/trueforge).**
+> Every substantive merge runs through a Qodo-reviewed pull request before
+> landing on `main`. Direct pushes to `main` are not counted as reviewed work.
+
+### How we use Qodo
+
+1. **Automatic reviews** — Qodo is installed on this repository via
+   *Integrations → SaaS → GitHub*. A review fires automatically when a PR is
+   opened, reopened, or marked ready for review.
+2. **Manual trigger** — any team member can comment `/agentic_review` on any
+   PR to request an on-demand review.
+3. **Severity policy** — we fix every valid **HIGH** severity finding before
+   merging. If a HIGH finding is wrong or intentionally deferred, we dismiss it
+   in the Qodo thread and record the reason. MEDIUM / LOW are our engineering
+   call; we note our decision in the PR body.
+4. **Follow-up review** — after addressing findings we push to the branch and
+   let Qodo review again so the PR history shows the resolved state.
+
+### Configuration files
+
+| File | Purpose |
+|------|---------|
+| [`.pr_agent.toml`](.pr_agent.toml) | Enables agentic review, routes HIGH inline, sets ignore paths |
+| [`REVIEW.md`](REVIEW.md) | Project-specific focus areas Qodo reads before every review |
+| [`AGENTS.md`](AGENTS.md) | Engineering rules read by Qodo and by coding agents |
+| [`.github/workflows/ci.yml`](.github/workflows/ci.yml) | CI that must pass (unit tests, lint, type-check) before merge |
+
+### Representative reviewed PRs
+
+<!-- Update this table with real PR links after the first reviewed merge. -->
+
+| PR | What Qodo surfaced | Our decision |
+|----|-------------------|--------------|
+| [#1 — Initial backend](https://github.com/jmass-ggg/BlastSheild/pulls) | *(fill in after first review)* | *(fill in)* |
+
+### How to reproduce a review
+
+```bash
+# 1. Branch and change something substantive
+git checkout -b feat/your-feature
+# ... make changes ...
+git commit -m "feat: your feature"
+git push binato feat/your-feature
+
+# 2. Open a PR on GitHub — Qodo reviews automatically.
+#    Or, on an existing PR, post:
+/agentic_review
+
+# 3. Fix HIGH findings, dismiss with reason if intentional, then push again.
+# 4. Qodo re-reviews the updated diff automatically.
+# 5. Human merges only after CI passes and no open HIGH findings remain.
+```
