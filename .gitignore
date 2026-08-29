@@ -75,3 +75,6 @@ Thumbs.db
 tmp/
 .cache/
 graphify-out/
+
+# Playwright MCP session logs
+.playwright-mcp/

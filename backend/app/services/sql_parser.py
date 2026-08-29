@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 
 from sqlglot import exp, parse
-from sqlglot.errors import ParseError
+from sqlglot.errors import ParseError, SqlglotError
 
 from app.core.errors import (
     InvalidSQLError,
@@ -46,7 +46,7 @@ def parse_sql(sql: str) -> ParsedSQL:
 
     try:
         statements = [statement for statement in parse(sql, read="postgres") if statement]
-    except ParseError as exc:
+    except SqlglotError as exc:
         raise InvalidSQLError("The SQL statement could not be parsed.") from exc
 
     if len(statements) != 1:
