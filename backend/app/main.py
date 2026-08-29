@@ -44,9 +44,12 @@ app.include_router(execution_router, prefix=API_PREFIX)
 async def blastshield_error_handler(
     _request: Request, error: BlastShieldError
 ) -> JSONResponse:
+    payload: dict[str, str] = {"code": error.code, "message": error.message}
+    if error.remediation:
+        payload["remediation"] = error.remediation
     return JSONResponse(
         status_code=error.status_code,
-        content={"code": error.code, "message": error.message},
+        content=payload,
     )
 
 

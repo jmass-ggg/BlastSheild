@@ -59,3 +59,20 @@ async def test_configured_frontend_origin_is_allowed_by_cors() -> None:
 
     assert response.status_code == 200
     assert response.headers["access-control-allow-origin"] == "http://localhost:3000"
+
+
+async def test_custom_error_responses_include_remediation() -> None:
+    transport = httpx.ASGITransport(app=app, raise_app_exceptions=False)
+    async with httpx.AsyncClient(
+        transport=transport, base_url="http://test"
+    ) as client:
+        unsupported = await client.post(
+            "/api/v1/analyze", json={"sql": "SELECT 1;"}
+        )
+
+    assert unsupported.status_code == 422
+    body = unsupported.json()
+    assert body["code"] == "UNSUPPORTED_SQL"
+    assert "remediation" in body
+    assert "DELETE" in body["remediation"]
+
