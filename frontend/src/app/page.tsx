@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useCallback, useState } from 'react';
-import { ShieldCheck, Cpu, Database, Activity, Sparkles } from 'lucide-react';
 import { Header } from '../components/layout/Header';
 import { PromptSection } from '../components/prompt/PromptSection';
 import { ImpactComparison } from '../components/impact/ImpactComparison';
@@ -88,7 +87,7 @@ export default function Home() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#070b12] text-slate-100 flex flex-col font-sans">
+    <div className="min-h-screen bg-[#f8fafc] text-slate-900 flex flex-col font-sans">
       <Header />
 
       <main className="max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 space-y-6 flex-1">
@@ -123,7 +122,7 @@ export default function Home() {
             onToggleSaferPreview={() => setIsSaferPreview((prev) => !prev)}
           />
         ) : (
-          !isAnalyzing && <CockpitStandbyState onSelectPreset={handleSelectPreset} />
+          !isAnalyzing && <EmptyState />
         )}
 
         {/* 3. Interactive Blast Radius Graph & Schema Explorer */}
@@ -150,38 +149,10 @@ export default function Home() {
   );
 }
 
-const CockpitStandbyState: React.FC<{ onSelectPreset: (key: string) => void }> = ({ onSelectPreset }) => (
-  <section className="bg-[#0b0f19] rounded-2xl border border-[#1e293b] p-8 sm:p-10 text-center space-y-4 shadow-[0_4px_24px_rgba(0,0,0,0.6)]">
-    <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center mx-auto shadow-[0_0_20px_rgba(245,158,11,0.2)]">
-      <Cpu className="w-6 h-6 animate-pulse" />
-    </div>
-
-    <div>
-      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-950/40 text-cyan-300 border border-cyan-800/60 text-xs font-mono mb-2">
-        <Activity className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
-        <span>STANDBY // AWAITING QUERY EXECUTION</span>
-      </div>
-      <h2 className="text-base sm:text-lg font-bold text-slate-100 font-mono tracking-tight uppercase">
-        BLAST RADIUS ENGINE READY FOR SIMULATION
-      </h2>
-      <p className="text-xs sm:text-sm text-slate-400 font-sans max-w-xl mx-auto mt-1 leading-relaxed">
-        Select a query preset above or write a custom DELETE statement to simulate cascading blast radius, quantify revenue at risk, and generate automated zero-loss safeguards.
-      </p>
-    </div>
-
-    <div className="pt-2 flex flex-wrap items-center justify-center gap-4 text-xs font-mono text-slate-400">
-      <span className="flex items-center gap-1.5 bg-[#070b12] px-3 py-1.5 rounded-lg border border-[#1e293b]">
-        <Database className="w-3.5 h-3.5 text-cyan-400" />
-        <span>AST REWRITE PARSER</span>
-      </span>
-      <span className="flex items-center gap-1.5 bg-[#070b12] px-3 py-1.5 rounded-lg border border-[#1e293b]">
-        <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-        <span>ZERO-LOSS SOFT DELETE</span>
-      </span>
-      <span className="flex items-center gap-1.5 bg-[#070b12] px-3 py-1.5 rounded-lg border border-[#1e293b]">
-        <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-        <span>REAL-TIME CASCADE DAG</span>
-      </span>
-    </div>
+const EmptyState: React.FC = () => (
+  <section className="bg-white rounded-2xl border border-dashed border-slate-300 p-10 text-center">
+    <p className="text-body-sm text-slate-500 font-normal">
+      Run an impact analysis above to inspect the blast-radius dependency graph and simulated safety alternatives.
+    </p>
   </section>
 );

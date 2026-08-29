@@ -57,123 +57,123 @@ const BlastRadiusCustomNode: React.FC<NodeProps> = ({ data }) => {
   const isCascade = !isRoot && impact && impact.role === 'CASCADE';
   const isDirect = isRoot || (impact && impact.role === 'DIRECT');
 
-  // Node Dark Cyber Card Styling
-  let cardBorder = 'border-[#1e293b] hover:border-[#334155] bg-[#0d1424]/95 shadow-[0_4px_16px_rgba(0,0,0,0.5)]';
-  let headerBg = 'bg-[#131d31] text-slate-200 border-b border-[#1e293b]';
+  // Styles based on state
+  let cardBorder = 'border-slate-200 hover:border-slate-300';
+  let headerBg = 'bg-slate-100 text-slate-800';
   let headerBadge = (
-    <span className="text-[10px] font-mono font-medium text-slate-500 bg-[#070b12] border border-[#1e293b] px-1.5 py-0.5 rounded">
+    <span className="text-badge font-medium text-slate-500 bg-slate-200 px-1.5 py-0.5 rounded font-mono">
       UNAFFECTED
     </span>
   );
 
   if (isSaferMode) {
     if (isDirect) {
-      cardBorder = 'border-emerald-500/80 bg-[#091515]/95 ring-1 ring-emerald-500/50 shadow-[0_0_25px_rgba(16,185,129,0.2)]';
-      headerBg = 'bg-emerald-950/60 text-emerald-200 border-b border-emerald-800/60';
+      cardBorder = 'border-emerald-500 ring-2 ring-emerald-100 shadow-md';
+      headerBg = 'bg-emerald-50 text-emerald-950 border-b border-emerald-200';
       headerBadge = (
-        <span className="text-[10px] font-mono font-bold text-emerald-300 bg-emerald-950/90 px-2 py-0.5 rounded-md border border-emerald-600 flex items-center gap-1">
-          <ShieldCheck className="w-3 h-3 text-emerald-400" />
+        <span className="text-badge font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full font-mono border border-emerald-300 flex items-center gap-1">
+          <ShieldCheck className="w-3 h-3 text-emerald-600" />
           SOFT-DELETE ({formatNumber(rowsAffected)})
         </span>
       );
     } else {
-      cardBorder = 'border-emerald-700/50 bg-[#091515]/90 ring-1 ring-emerald-700/30';
-      headerBg = 'bg-emerald-950/40 text-emerald-300 border-b border-emerald-800/40';
+      cardBorder = 'border-emerald-400 ring-1 ring-emerald-100 bg-emerald-50/20';
+      headerBg = 'bg-emerald-50 text-emerald-900 border-b border-emerald-200';
       headerBadge = (
-        <span className="text-[10px] font-mono font-semibold text-emerald-300 bg-emerald-950/90 px-2 py-0.5 rounded-md border border-emerald-700 flex items-center gap-1">
-          <CheckCircle2 className="w-3 h-3 text-emerald-400" />
-          PROTECTED (0)
+        <span className="text-badge font-semibold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full font-mono border border-emerald-300 flex items-center gap-1">
+          <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+          PROTECTED (0 purged)
         </span>
       );
     }
   } else if (isDirect) {
-    cardBorder = 'border-rose-500/90 bg-[#140b12]/95 ring-1 ring-rose-500/50 shadow-[0_0_30px_rgba(244,63,94,0.3)]';
-    headerBg = 'bg-rose-950/70 text-rose-200 border-b border-rose-800/60';
+    cardBorder = 'border-rose-500 ring-2 ring-rose-200 shadow-lg';
+    headerBg = 'bg-rose-50 text-rose-950 border-b border-rose-200';
     headerBadge = (
-      <span className="text-[10px] font-mono font-bold text-rose-300 bg-rose-950/90 px-2 py-0.5 rounded-md border border-rose-600 flex items-center gap-1 shadow-[0_0_8px_rgba(244,63,94,0.3)]">
-        <ShieldAlert className="w-3 h-3 text-rose-400" />
+      <span className="text-badge font-bold text-rose-800 bg-rose-100 px-2 py-0.5 rounded-full font-mono border border-rose-300 flex items-center gap-1">
+        <ShieldAlert className="w-3 h-3 text-rose-600" />
         DIRECT ({formatNumber(rowsAffected)})
       </span>
     );
   } else if (isCascade) {
-    cardBorder = 'border-amber-500/80 bg-[#16120b]/95 ring-1 ring-amber-500/50 shadow-[0_0_25px_rgba(245,158,11,0.25)]';
-    headerBg = 'bg-amber-950/70 text-amber-200 border-b border-amber-800/60';
+    cardBorder = 'border-amber-500 ring-2 ring-amber-100 shadow-md';
+    headerBg = 'bg-amber-50 text-amber-950 border-b border-amber-200';
     headerBadge = (
-      <span className="text-[10px] font-mono font-bold text-amber-300 bg-amber-950/90 px-2 py-0.5 rounded-md border border-amber-600 flex items-center gap-1 shadow-[0_0_8px_rgba(245,158,11,0.3)]">
-        <ArrowDown className="w-3 h-3 text-amber-400" />
+      <span className="text-badge font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full font-mono border border-amber-300 flex items-center gap-1">
+        <ArrowDown className="w-3 h-3 text-amber-600" />
         CASCADE ({formatNumber(rowsAffected)})
       </span>
     );
   }
 
   if (isSelected) {
-    cardBorder += ' ring-2 ring-cyan-400 shadow-[0_0_25px_rgba(6,182,212,0.4)]';
+    cardBorder += ' ring-2 ring-blue-600 shadow-xl';
   }
 
   return (
     <div
       onClick={() => onSelectTable(tableName)}
-      className={`w-[260px] rounded-xl border text-left cursor-pointer transition-all duration-200 select-none overflow-hidden ${cardBorder}`}
+      className={`w-[250px] bg-white rounded-xl border text-left cursor-pointer transition-all duration-200 select-none overflow-hidden ${cardBorder}`}
     >
       <Handle
         type="target"
         position={Position.Top}
-        className="!w-2.5 !h-2.5 !bg-cyan-400 !border-2 !border-[#070b12]"
+        className="!w-2.5 !h-2.5 !bg-slate-400 !border-2 !border-white"
       />
 
       {/* Header */}
       <div className={`px-3 py-2 flex items-center justify-between gap-1.5 ${headerBg}`}>
-        <div className="flex items-center gap-1.5 font-mono font-bold text-xs truncate">
-          <Database className="w-3.5 h-3.5 shrink-0 text-slate-400" />
-          <span className="truncate text-slate-100">{tableName}</span>
+        <div className="flex items-center gap-1.5 font-mono font-bold text-caption truncate">
+          <Database className="w-3.5 h-3.5 shrink-0 text-slate-700" />
+          <span className="truncate">{tableName}</span>
         </div>
         {headerBadge}
       </div>
 
       {/* Impact Status Banner */}
-      <div className="px-3 py-1.5 border-b border-[#1e293b] bg-[#070b12]/80 flex items-center justify-between text-[11px] font-mono">
-        <span>
+      <div className="px-3 py-1.5 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between text-badge font-mono">
+        <span className="text-slate-500">
           {isSaferMode ? (
             isDirect ? (
-              <span className="text-emerald-400 font-semibold">marked deleted_at</span>
+              <span className="text-emerald-700 font-semibold">marked deleted_at</span>
             ) : (
-              <span className="text-emerald-400 font-medium">0 purge loss</span>
+              <span className="text-emerald-700 font-medium">0 deletions</span>
             )
           ) : rowsAffected > 0 ? (
-            <span className="text-rose-400 font-semibold">
+            <span className="text-rose-700 font-semibold">
               {formatNumber(rowsAffected)} rows affected
             </span>
           ) : (
-            <span className="text-slate-500">0 rows affected</span>
+            <span className="text-slate-400">0 rows affected</span>
           )}
         </span>
-        <span className="text-slate-500">
+        <span className="text-slate-400">
           of {formatNumber(totalRows || tableSchema?.rowCount || 0)} total
         </span>
       </div>
 
       {/* Columns Preview */}
       {tableSchema && (
-        <div className="p-2.5 space-y-1 text-xs font-mono bg-[#090d16]">
+        <div className="p-2.5 space-y-1 text-caption font-mono bg-white">
           {tableSchema.columns.slice(0, 3).map((col) => (
             <div
               key={col.name}
-              className="flex items-center justify-between text-slate-400 text-[11px]"
+              className="flex items-center justify-between text-slate-600 text-badge"
             >
-              <span className="flex items-center gap-1.5 truncate max-w-[155px]">
-                {col.isPk && <Key className="w-3 h-3 text-amber-400 shrink-0" />}
-                {col.isFk && <Link2 className="w-3 h-3 text-purple-400 shrink-0" />}
-                <span className={col.isPk ? 'font-semibold text-slate-200 truncate' : 'font-normal text-slate-300 truncate'}>
+              <span className="flex items-center gap-1 truncate max-w-[150px]">
+                {col.isPk && <Key className="w-2.5 h-2.5 text-amber-500 shrink-0" />}
+                {col.isFk && <Link2 className="w-2.5 h-2.5 text-purple-500 shrink-0" />}
+                <span className={col.isPk ? 'font-semibold text-slate-900 truncate' : 'font-normal truncate'}>
                   {col.name}
                 </span>
               </span>
-              <span className="text-cyan-400/80 font-normal shrink-0 text-[10px]">
+              <span className="text-slate-400 font-normal shrink-0">
                 {col.type.split('(')[0].toLowerCase()}
               </span>
             </div>
           ))}
           {tableSchema.columns.length > 3 && (
-            <div className="text-[10px] text-slate-600 text-center pt-0.5 font-normal">
+            <div className="text-badge text-slate-400 text-center pt-0.5 font-normal">
               + {tableSchema.columns.length - 3} more columns
             </div>
           )}
@@ -182,7 +182,7 @@ const BlastRadiusCustomNode: React.FC<NodeProps> = ({ data }) => {
 
       {/* Footer Pill */}
       {isSaferMode && !isDirect && rowsAffected > 0 && (
-        <div className="px-2.5 py-1 bg-emerald-950/60 text-emerald-300 border-t border-emerald-800/40 text-[10px] font-mono font-medium text-center">
+        <div className="px-2.5 py-1 bg-emerald-50 text-emerald-800 border-t border-emerald-100 text-badge font-mono font-medium text-center">
           ✓ {formatNumber(rowsAffected)} records kept intact
         </div>
       )}
@@ -190,7 +190,7 @@ const BlastRadiusCustomNode: React.FC<NodeProps> = ({ data }) => {
       <Handle
         type="source"
         position={Position.Bottom}
-        className="!w-2.5 !h-2.5 !bg-amber-400 !border-2 !border-[#070b12]"
+        className="!w-2.5 !h-2.5 !bg-slate-400 !border-2 !border-white"
       />
     </div>
   );
@@ -228,10 +228,10 @@ const BlastRadiusCustomEdge: React.FC<EdgeProps> = ({
   });
 
   const strokeColor = isSafer
-    ? '#10b981' // emerald
+    ? '#10b981' // emerald-500
     : isAffected
-    ? '#f59e0b' // amber
-    : '#334155'; // slate-700
+    ? '#f97316' // orange-500
+    : '#cbd5e1'; // slate-300
 
   return (
     <>
@@ -240,9 +240,10 @@ const BlastRadiusCustomEdge: React.FC<EdgeProps> = ({
         <path
           d={edgePath}
           fill="none"
-          stroke="rgba(245, 158, 11, 0.2)"
-          strokeWidth={10}
+          stroke="#ffedd5" // orange-100
+          strokeWidth={8}
           strokeLinecap="round"
+          className="opacity-80"
         />
       )}
 
@@ -252,7 +253,7 @@ const BlastRadiusCustomEdge: React.FC<EdgeProps> = ({
         d={edgePath}
         fill="none"
         stroke={strokeColor}
-        strokeWidth={isAffected || isSafer ? 2.5 : 1.5}
+        strokeWidth={isAffected || isSafer ? 2.5 : 1.75}
         strokeDasharray={isAffected ? '6,4' : undefined}
         className={isAffected ? 'animate-flow-dash' : undefined}
       />
@@ -265,12 +266,12 @@ const BlastRadiusCustomEdge: React.FC<EdgeProps> = ({
             transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
             pointerEvents: 'all',
           }}
-          className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold border shadow-[0_2px_8px_rgba(0,0,0,0.6)] ${
+          className={`px-2 py-0.5 rounded text-badge font-mono font-bold shadow-2xs border ${
             isSafer
-              ? 'bg-emerald-950/90 text-emerald-300 border-emerald-700'
+              ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
               : isAffected
-              ? 'bg-amber-950/90 text-amber-300 border-amber-600 shadow-[0_0_10px_rgba(245,158,11,0.3)]'
-              : 'bg-[#0b0f19] text-slate-400 border-[#1e293b]'
+              ? 'bg-amber-100 text-amber-900 border-amber-300'
+              : 'bg-white text-slate-600 border-slate-200'
           }`}
         >
           {isSafer ? 'SAFEGUARDED' : edgeData?.onDelete || 'FK CASCADE'}
@@ -280,6 +281,7 @@ const BlastRadiusCustomEdge: React.FC<EdgeProps> = ({
   );
 };
 
+// Custom Types registry for React Flow
 const nodeTypes = {
   blastNode: BlastRadiusCustomNode,
 };
@@ -289,8 +291,8 @@ const edgeTypes = {
 
 // --- DAGRE LAYOUT HELPER ---
 
-const NODE_WIDTH = 260;
-const NODE_HEIGHT = 165;
+const NODE_WIDTH = 250;
+const NODE_HEIGHT = 160;
 
 function getLayoutedElements(
   nodes: Node[],
@@ -303,7 +305,7 @@ function getLayoutedElements(
   dagreGraph.setGraph({
     rankdir: direction,
     nodesep: 50,
-    ranksep: 75,
+    ranksep: 70,
   });
 
   nodes.forEach((node) => {
@@ -355,7 +357,9 @@ const BlastRadiusGraphInner: React.FC<BlastRadiusGraphInnerProps> = ({
 }) => {
   const { fitView } = useReactFlow();
 
+  // Construct raw nodes and edges from API graph
   const { nodes: initialNodes, edges: initialEdges } = useMemo(() => {
+    // If graph has nodes from API
     if (graph && graph.nodes && graph.nodes.length > 0) {
       const rawNodes: Node[] = graph.nodes.map((n) => {
         const tableSchema = tables[n.table];
@@ -399,6 +403,7 @@ const BlastRadiusGraphInner: React.FC<BlastRadiusGraphInnerProps> = ({
       return getLayoutedElements(rawNodes, rawEdges, 'TB');
     }
 
+    // Fallback: render baseline schema entities if no active analysis graph
     const schemaNodes: Node[] = Object.entries(tables).map(([name, table]) => {
       const impact = affectedMap[name];
       const isRoot = name === 'users';
@@ -434,6 +439,7 @@ const BlastRadiusGraphInner: React.FC<BlastRadiusGraphInnerProps> = ({
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
 
+  // Sync state whenever initial elements change
   useEffect(() => {
     setNodes(initialNodes);
     setEdges(initialEdges);
@@ -444,7 +450,7 @@ const BlastRadiusGraphInner: React.FC<BlastRadiusGraphInnerProps> = ({
   }, [initialNodes, initialEdges, setNodes, setEdges, fitView]);
 
   return (
-    <div className="w-full h-[600px] bg-[#070b12] rounded-xl border border-[#1e293b] relative overflow-hidden shadow-inner">
+    <div className="w-full h-[540px] bg-slate-950/5 rounded-xl border border-slate-200 relative overflow-hidden">
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -458,45 +464,45 @@ const BlastRadiusGraphInner: React.FC<BlastRadiusGraphInnerProps> = ({
         attributionPosition="bottom-right"
         proOptions={{ hideAttribution: true }}
       >
-        <Background variant={BackgroundVariant.Dots} gap={16} size={1} color="#1e293b" />
-        <Controls className="!bg-[#0d1424] !border-[#1e293b] !text-slate-300" />
+        <Background variant={BackgroundVariant.Dots} gap={16} size={1} color="#cbd5e1" />
+        <Controls className="!bg-white !border-slate-200 !shadow-sm !rounded-lg" />
         <MiniMap
           nodeColor={(n) => {
             const data = n.data as unknown as BlastNodeData;
             if (data?.isSaferMode) return '#10b981';
             if (data?.isRoot) return '#f43f5e';
             if (data?.impact?.role === 'CASCADE') return '#f59e0b';
-            return '#1e293b';
+            return '#e2e8f0';
           }}
-          className="!bg-[#0d1424]/90 !border !border-[#1e293b] !rounded-lg hidden sm:block"
+          className="!bg-white/90 !border !border-slate-200 !rounded-lg !shadow-xs hidden sm:block"
         />
       </ReactFlow>
 
       {/* Graph Legend Overlay */}
-      <div className="absolute top-3 left-3 bg-[#0b0f19]/90 backdrop-blur-md px-3 py-2 rounded-lg border border-[#1e293b] text-xs font-mono shadow-[0_4px_16px_rgba(0,0,0,0.5)] space-y-1 pointer-events-none z-10">
-        <div className="font-bold text-slate-200 uppercase tracking-wider text-[10px]">
-          {isSaferMode ? 'SAFEGUARD SIMULATION GRAPH' : 'BLAST RADIUS CASCADE DAG'}
+      <div className="absolute top-3 left-3 bg-white/90 backdrop-blur-xs p-2.5 rounded-lg border border-slate-200 text-badge font-mono shadow-xs space-y-1.5 pointer-events-none z-10">
+        <div className="font-semibold text-slate-700 uppercase tracking-wider">
+          {isSaferMode ? 'Safeguard Simulation Active' : 'Blast Radius Dependency Graph'}
         </div>
-        <div className="flex items-center gap-3 text-[11px]">
+        <div className="flex items-center gap-3 text-caption">
           {isSaferMode ? (
             <>
-              <span className="flex items-center gap-1.5 text-emerald-400">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_6px_#10b981]" /> Soft-Delete Root
+              <span className="flex items-center gap-1 text-emerald-700">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" /> Soft-Delete Root
               </span>
-              <span className="flex items-center gap-1.5 text-emerald-400">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400/60" /> Protected (0 Cascade)
+              <span className="flex items-center gap-1 text-emerald-700">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-300" /> Protected (0 Cascade)
               </span>
             </>
           ) : (
             <>
-              <span className="flex items-center gap-1.5 text-rose-400">
-                <span className="w-2.5 h-2.5 rounded-full bg-rose-500 shadow-[0_0_6px_#f43f5e]" /> Direct Target
+              <span className="flex items-center gap-1 text-rose-700">
+                <span className="w-2.5 h-2.5 rounded-full bg-rose-500" /> Direct Target
               </span>
-              <span className="flex items-center gap-1.5 text-amber-400">
-                <span className="w-2.5 h-2.5 rounded-full bg-amber-500 shadow-[0_0_6px_#f59e0b]" /> Cascade Purge
+              <span className="flex items-center gap-1 text-amber-700">
+                <span className="w-2.5 h-2.5 rounded-full bg-amber-500" /> Cascade Deletion
               </span>
-              <span className="flex items-center gap-1.5 text-slate-500">
-                <span className="w-2.5 h-2.5 rounded-full bg-slate-700" /> Unaffected
+              <span className="flex items-center gap-1 text-slate-500">
+                <span className="w-2.5 h-2.5 rounded-full bg-slate-300" /> Unaffected
               </span>
             </>
           )}
@@ -505,6 +511,8 @@ const BlastRadiusGraphInner: React.FC<BlastRadiusGraphInnerProps> = ({
     </div>
   );
 };
+
+// --- WRAPPER WITH REACTFLOW PROVIDER ---
 
 export interface BlastRadiusGraphProps {
   graph: ReportGraph;
