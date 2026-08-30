@@ -142,11 +142,15 @@ export default function Home() {
       setOrigin('DASHBOARD');
       setReceivedAt(new Date());
     } catch (caught) {
-      setAnalyzeError(
-        caught instanceof ApiError
-          ? `${caught.code}: ${caught.message}`
-          : 'An unexpected error occurred while analyzing.'
-      );
+      setView(null);
+      if (caught instanceof ApiError) {
+        const detail = caught.remediation
+          ? `${caught.code}: ${caught.message} (${caught.remediation})`
+          : `${caught.code}: ${caught.message}`;
+        setAnalyzeError(detail);
+      } else {
+        setAnalyzeError('An unexpected error occurred while analyzing.');
+      }
     } finally {
       setIsAnalyzing(false);
     }
@@ -172,11 +176,14 @@ export default function Home() {
       setView({ ...view, status: transition.status });
       latestReportKey.current = `${view.analysisId}:${transition.status}`;
     } catch (caught) {
-      setAnalyzeError(
-        caught instanceof ApiError
-          ? `${caught.code}: ${caught.message}`
-          : 'Rejecting the analysis failed.'
-      );
+      if (caught instanceof ApiError) {
+        const detail = caught.remediation
+          ? `${caught.code}: ${caught.message} (${caught.remediation})`
+          : `${caught.code}: ${caught.message}`;
+        setAnalyzeError(detail);
+      } else {
+        setAnalyzeError('Rejecting the analysis failed.');
+      }
     } finally {
       setIsRejecting(false);
     }

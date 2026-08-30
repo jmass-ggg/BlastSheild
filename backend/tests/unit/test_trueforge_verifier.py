@@ -3,7 +3,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-
 VERIFIER = (
     Path(__file__).resolve().parents[3]
     / "trueforge"

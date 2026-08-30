@@ -1,0 +1,78 @@
+name: CI — Unit & MCP Tests
+
+# Run on every PR targeting main, and on direct pushes to main.
+# Qodo picks up its own trigger from the GitHub app; this CI job
+# provides the green test status Qodo surfaces in the PR summary.
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  unit-tests:
+    name: Python unit & MCP tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install backend + MCP server with test extras
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e "./backend[test]"
+          pip install -e "./mcp_server[test]"
+
+      - name: Run unit tests (backend)
+        run: pytest backend/tests/unit -ra --tb=short
+
+      - name: Run MCP server tests
+        run: pytest mcp_server/tests -ra --tb=short
+
+  lint:
+    name: Ruff lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install ruff
+        run: pip install ruff
+
+      - name: Run ruff check
+        run: ruff check backend/ mcp_server/ --output-format=github
+
+  frontend-typecheck:
+    name: TypeScript type-check
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend deps
+        working-directory: frontend
+        run: npm ci
+
+      - name: TypeScript type-check
+        working-directory: frontend
+        run: npx tsc --noEmit

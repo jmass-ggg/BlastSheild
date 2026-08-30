@@ -1,7 +1,6 @@
+import blastshield_mcp.server as server_module
 import httpx
 import pytest
-
-import blastshield_mcp.server as server_module
 from blastshield_mcp.client import BlastShieldAPIClient
 from blastshield_mcp.server import (
     blastshield_request_execution,

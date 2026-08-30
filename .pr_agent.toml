@@ -1,0 +1,49 @@
+# ─────────────────────────────────────────────────────────────────
+# Qodo / PR-Agent configuration for BlastShield
+# Docs: https://docs.qodo.ai/install-and-configure/configuration-overview
+# ─────────────────────────────────────────────────────────────────
+
+[config]
+# Use the most thorough analysis mode for a safety-critical codebase.
+pr_commands = [
+    "/agentic_review --pr_review.require_tests_review=true",
+]
+
+[pr_reviewer]
+# Require that every PR has tests for new functionality.
+require_tests_review     = true
+require_security_review  = true
+require_focused_review   = true
+
+# Inline HIGH/CRITICAL; post MEDIUM+ in summary only.
+inline_code_comments     = true
+
+# Keep summaries lean — findings are grouped; extras collapse.
+num_code_suggestions_per_chunk = 4
+
+# Automatically assign severity labels.
+enable_review_labels_security   = true
+enable_review_labels_effort     = true
+
+[pr_description]
+publish_labels       = true
+generate_ai_title    = true
+use_bullet_points    = true
+
+[github]
+# Route HIGH findings inline so they are impossible to miss in the diff.
+inline_pr_comments = true
+
+[ignore]
+# Paths that produce noise without security value.
+glob = [
+    "*.md",
+    "docs/**",
+    "**/__pycache__/**",
+    "**/*.pyc",
+    ".venv/**",
+    "node_modules/**",
+    ".next/**",
+    "frontend/public/**",
+    "database/fixtures/**",
+]

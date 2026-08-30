@@ -1,9 +1,8 @@
-from sqlglot import parse_one
-
 from app.schemas.graph import ForeignKeyRelationship
 from app.services.fk_graph import build_fk_graph
 from app.services.query_planner import build_correlated_count_query
 from app.services.sql_parser import parse_sql
+from sqlglot import parse_one
 
 
 def test_builds_depth_two_correlated_count_and_qualifies_root_predicate() -> None:

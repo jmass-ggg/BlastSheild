@@ -19,12 +19,14 @@ const UNREACHABLE = `Cannot reach the BlastShield API at ${API_BASE_URL}. Is the
 export class ApiError extends Error {
   readonly code: string;
   readonly status: number;
+  readonly remediation?: string;
 
-  constructor(code: string, message: string, status: number) {
+  constructor(code: string, message: string, status: number, remediation?: string) {
     super(message);
     this.name = 'ApiError';
     this.code = code;
     this.status = status;
+    this.remediation = remediation;
   }
 }
 
@@ -45,7 +47,8 @@ async function readError(response: Response): Promise<ApiError> {
   return new ApiError(
     body.code ?? 'HTTP_ERROR',
     body.message ?? `Request failed with status ${response.status}.`,
-    response.status
+    response.status,
+    body.remediation
   );
 }
 

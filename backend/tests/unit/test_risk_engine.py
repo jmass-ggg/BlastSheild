@@ -1,5 +1,4 @@
 import pytest
-
 from app.services.risk_engine import calculate_risk, risk_level
 
 
@@ -36,11 +35,14 @@ def test_delete_without_where_is_near_maximum_and_critical() -> None:
 
 
 def test_identical_inputs_produce_identical_risk() -> None:
-    arguments = dict(
-        operation="DELETE",
-        direct_rows=40,
-        dependencies=[],
-        has_where=True,
-        recoverable=True,
-    )
-    assert calculate_risk(**arguments) == calculate_risk(**arguments)
+    arguments = {
+        "operation": "DELETE",
+        "direct_rows": 40,
+        "dependencies": [],
+        "has_where": True,
+        "recoverable": True,
+    }
+    first = calculate_risk(**arguments)
+    second = calculate_risk(**arguments)
+
+    assert first == second

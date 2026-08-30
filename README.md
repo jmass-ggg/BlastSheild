@@ -1,11 +1,28 @@
 # BlastShield
 
-BlastShield is a real-time safety gateway and visual intelligence dashboard for PostgreSQL `DELETE` statements proposed by
-AI agents. It intercepts destructive queries, analyzes the live foreign-key blast radius, calculates deterministic risk,
-presents an interactive dependency graph and safer soft-delete alternative, requires human approval, revalidates state against production, and executes approved
-statements in isolated transactions.
+> **An AI agent proposed `DELETE FROM users WHERE last_login < NOW() - INTERVAL '2 years'`.**
+> BlastShield intercepted it, calculated **40 direct rows → 252 cascading dependents → 14 active subscriptions → $406 MRR at risk → Risk 60 / HIGH**, showed the human a dependency graph and a safe soft-delete alternative, waited for approval, revalidated against production, then executed — all in one auditable lifecycle.
 
-This repository contains the complete full-stack platform: the Next.js interactive frontend (featuring React Flow blast-radius DAG and risk gauge), FastAPI safety gateway, PostgreSQL schema fixture and control-plane migrations, controlled MCP bridge, comprehensive test suite, and demo preflight/rehearsal tooling.
+BlastShield is a **safety gateway and visual intelligence dashboard** for destructive PostgreSQL operations proposed by AI agents. It turns a dangerous one-liner into a fully-audited, human-approved action with zero guesswork.
+
+```
+AI Agent proposes DELETE
+        │
+        ▼  (MCP intercept)
+  BlastShield analyzes
+  ├─ FK blast-radius DAG    → 40 direct + 252 cascade rows
+  ├─ Business impact        → 14 subscriptions, $406 MRR at risk
+  ├─ Risk score             → 60 / HIGH
+  └─ Safer alternative      → previewed + copyable soft-delete SQL
+        │
+        ▼  (human reviews the visual dashboard)
+  Human: Approve original DELETE  ─or─  Reject
+        │  (safer SQL is previewed and copied to run separately)
+        ▼  (revalidation against live production)
+  Execution committed — 40 rows deleted, cascades measured
+```
+
+This repository contains the complete full-stack platform: **Next.js** interactive frontend (React Flow blast-radius DAG, risk gauge, side-by-side safer-alternative diff), **FastAPI** safety gateway, PostgreSQL schema fixture and control-plane migrations, controlled MCP bridge, **81-test suite** (53 unit + MCP, 28 QA integration), and demo preflight/rehearsal tooling.
 
 ## Architecture
 
@@ -637,3 +654,67 @@ API route compatibility is unchanged. Analysis responses include the submitted
 `sql` string for TrueForge/MCP dashboard synchronization. The former
 subscription-specific `business_impact` object and risk-breakdown field were
 removed so analysis works across arbitrary PostgreSQL schemas.
+
+---
+
+## Qodo Code Review Evidence
+
+> **Required by the [TrueForge hackathon](https://www.wemakedevs.org/hackathons/trueforge).**
+> Every substantive merge runs through a Qodo-reviewed pull request before
+> landing on `main`. Direct pushes to `main` are not counted as reviewed work.
+
+### How we use Qodo
+
+1. **Automatic reviews** — Qodo is installed on this repository via
+   *Integrations → SaaS → GitHub*. A review fires automatically when a PR is
+   opened, reopened, or marked ready for review.
+2. **Manual trigger** — any team member can comment `/agentic_review` on any
+   PR to request an on-demand review.
+3. **Severity policy** — we fix every valid **HIGH** severity finding before
+   merging. If a HIGH finding is wrong or intentionally deferred, we dismiss it
+   in the Qodo thread and record the reason. MEDIUM / LOW are our engineering
+   call; we note our decision in the PR body.
+4. **Follow-up review** — after addressing findings we push to the branch and
+   let Qodo review again so the PR history shows the resolved state.
+
+### Configuration files
+
+| File | Purpose |
+|------|---------|
+| [`.pr_agent.toml`](.pr_agent.toml) | Enables agentic review, routes HIGH inline, sets ignore paths |
+| [`REVIEW.md`](REVIEW.md) | Project-specific focus areas Qodo reads before every review |
+| [`AGENTS.md`](AGENTS.md) | Engineering rules read by Qodo and by coding agents |
+| [`.github/workflows/ci.yml`](.github/workflows/ci.yml) | CI that must pass (unit tests, lint, type-check) before merge |
+
+### Representative reviewed PRs
+
+| PR | What Qodo surfaced | Our decision |
+|----|-------------------|--------------|
+| [#3 — docs: README hook + why-blastshield section](https://github.com/jmass-ggg/BlastSheild/pull/3) | 3 MEDIUM bugs: (1) flow diagram implied safer-SQL was executable via BlastShield when it is preview+copy only; (2) test count stated as 53 instead of 81; (3) PR evidence row linked to /pulls instead of a specific PR | All three fixed in follow-up commit on this branch before merge |
+| [#4 — feat(ui): add cancelled subscriptions preset query](https://github.com/jmass-ggg/BlastSheild/pull/4) | 0 bugs / clean review — verified safe query preset expansion and frontend type consistency | Approved and merged cleanly |
+| [#5 — feat(api): add structured error remediation guidance](https://github.com/jmass-ggg/BlastSheild/pull/5) | 2 HIGH bugs: (1) remediation guidance captured by client but never displayed in UI, (2) ExecutionFailedError advised blind retries risking duplicate deletions | Fixed both HIGH findings: added remediation UI alerts in dashboard/modal and corrected retry safety text |
+
+> **How we work with Qodo findings:**
+> Every PR opens automatically triggering a Qodo agentic review.
+> - **HIGH** findings → fixed before merge, or dismissed in the Qodo thread with a written reason.
+> - **MEDIUM / LOW** → our engineering call; decision noted in the PR description.
+> - After addressing findings we push a follow-up commit and Qodo re-reviews automatically.
+
+### How to reproduce a review
+
+```bash
+# 1. Branch and change something substantive
+git checkout -b feat/your-feature
+# ... make changes ...
+git commit -m "feat: your feature"
+git push binato feat/your-feature
+
+# 2. Open a PR on GitHub — Qodo reviews automatically within ~60 seconds.
+#    Or trigger on demand by commenting on any open PR:
+/agentic_review
+
+# 3. Fix HIGH findings, dismiss with reason if intentional, then push again.
+# 4. Qodo re-reviews the updated diff automatically.
+# 5. Human merges only after CI passes and no open HIGH findings remain.
+```
+

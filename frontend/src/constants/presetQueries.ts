@@ -29,6 +29,12 @@ export const PRESET_QUERIES: PresetQuery[] = [
     sql: 'DELETE FROM sessions WHERE expires_at < NOW();',
   },
   {
+    key: 'cancelled_subscriptions',
+    label: 'Prune cancelled subscriptions',
+    hint: 'Removes churned customer subscription records',
+    sql: "DELETE FROM subscriptions WHERE status = 'cancelled';",
+  },
+  {
     key: 'unguarded_delete',
     label: 'Delete every user (no WHERE)',
     hint: 'Worst case — full-table delete across the whole graph',

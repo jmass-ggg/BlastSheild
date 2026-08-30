@@ -1,5 +1,4 @@
 import pytest
-
 from app.core.errors import ExecutionFailedError, MultipleStatementsError
 from app.db.models import AnalysisRecord
 from app.services.executor import Executor

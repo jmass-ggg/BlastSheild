@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from typing import Any
+from typing import Any, ClassVar
 
 from sqlalchemy import DateTime, Integer, String, Text, Uuid, func
 from sqlalchemy.dialects.postgresql import JSONB
@@ -13,7 +13,7 @@ class Base(DeclarativeBase):
 
 class AnalysisRecord(Base):
     __tablename__ = "analyses"
-    __table_args__ = {"schema": "blastshield_control"}
+    __table_args__: ClassVar[dict[str, str]] = {"schema": "blastshield_control"}
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
     original_sql: Mapped[str] = mapped_column(Text, nullable=False)

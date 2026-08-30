@@ -12,29 +12,25 @@ def test_analyzer_role_security_boundaries(analyzer_engine):
         assert conn.execute(text("SELECT COUNT(*) FROM public.orders")).scalar_one() == 250
 
     # Forbidden: INSERT in public
-    with pytest.raises(DBAPIError):
+    with pytest.raises(DBAPIError):  # noqa: SIM117 — pytest.raises must wrap the engine block; combining would break assertion
         with analyzer_engine.begin() as conn:
             conn.execute(text("INSERT INTO public.users (email, full_name, last_login) VALUES ('x@x.test', 'X', NOW())"))
 
     # Forbidden: UPDATE in public
-    with pytest.raises(DBAPIError):
-        with analyzer_engine.begin() as conn:
-            conn.execute(text("UPDATE public.users SET full_name = 'hacked' WHERE id = 1"))
+    with pytest.raises(DBAPIError), analyzer_engine.begin() as conn:
+        conn.execute(text("UPDATE public.users SET full_name = 'hacked' WHERE id = 1"))
 
     # Forbidden: DELETE in public
-    with pytest.raises(DBAPIError):
-        with analyzer_engine.begin() as conn:
-            conn.execute(text("DELETE FROM public.users WHERE id = 1"))
+    with pytest.raises(DBAPIError), analyzer_engine.begin() as conn:
+        conn.execute(text("DELETE FROM public.users WHERE id = 1"))
 
     # Forbidden: SELECT from blastshield_control
-    with pytest.raises(DBAPIError):
-        with analyzer_engine.connect() as conn:
-            conn.execute(text("SELECT * FROM blastshield_control.analyses"))
+    with pytest.raises(DBAPIError), analyzer_engine.connect() as conn:
+        conn.execute(text("SELECT * FROM blastshield_control.analyses"))
 
     # Forbidden: DDL
-    with pytest.raises(DBAPIError):
-        with analyzer_engine.begin() as conn:
-            conn.execute(text("CREATE TABLE public.bad_table (id INT)"))
+    with pytest.raises(DBAPIError), analyzer_engine.begin() as conn:
+        conn.execute(text("CREATE TABLE public.bad_table (id INT)"))
 
 
 def test_app_role_security_boundaries(app_engine):
@@ -45,19 +41,17 @@ def test_app_role_security_boundaries(app_engine):
         assert conn.execute(text("SELECT COUNT(*) FROM blastshield_control.analyses")).scalar_one() >= 0
 
     # Forbidden: SELECT from public.users
-    with pytest.raises(DBAPIError):
-        with app_engine.connect() as conn:
-            conn.execute(text("SELECT * FROM public.users"))
+    with pytest.raises(DBAPIError), app_engine.connect() as conn:
+        conn.execute(text("SELECT * FROM public.users"))
 
     # Forbidden: INSERT into public.users
-    with pytest.raises(DBAPIError):
+    with pytest.raises(DBAPIError):  # noqa: SIM117 — pytest.raises must wrap the engine block; combining would break assertion
         with app_engine.begin() as conn:
             conn.execute(text("INSERT INTO public.users (email, full_name, last_login) VALUES ('x@x.test', 'X', NOW())"))
 
     # Forbidden: DELETE from public.users
-    with pytest.raises(DBAPIError):
-        with app_engine.begin() as conn:
-            conn.execute(text("DELETE FROM public.users WHERE id = 1"))
+    with pytest.raises(DBAPIError), app_engine.begin() as conn:
+        conn.execute(text("DELETE FROM public.users WHERE id = 1"))
 
 
 def test_executor_role_security_boundaries(execution_engine):
@@ -68,11 +62,10 @@ def test_executor_role_security_boundaries(execution_engine):
         assert conn.execute(text("SELECT COUNT(*) FROM public.users")).scalar_one() == 100
 
     # Forbidden: SELECT from blastshield_control
-    with pytest.raises(DBAPIError):
-        with execution_engine.connect() as conn:
-            conn.execute(text("SELECT * FROM blastshield_control.analyses"))
+    with pytest.raises(DBAPIError), execution_engine.connect() as conn:
+        conn.execute(text("SELECT * FROM blastshield_control.analyses"))
 
     # Forbidden: UPDATE in blastshield_control
-    with pytest.raises(DBAPIError):
+    with pytest.raises(DBAPIError):  # noqa: SIM117 — pytest.raises must wrap the engine block; combining would break assertion
         with execution_engine.begin() as conn:
             conn.execute(text("UPDATE blastshield_control.analyses SET status = 'EXECUTED'"))

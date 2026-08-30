@@ -135,4 +135,5 @@ export interface StaleExecutionResponse {
 export interface ApiErrorBody {
   code: string;
   message: string;
+  remediation?: string;
 }

@@ -1,7 +1,6 @@
 from types import SimpleNamespace
 
 import pytest
-
 from app.db.models import AnalysisRecord
 from app.services.revalidator import Revalidator
 

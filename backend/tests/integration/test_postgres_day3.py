@@ -3,9 +3,6 @@ import uuid
 from concurrent.futures import ThreadPoolExecutor
 
 import pytest
-from sqlalchemy import create_engine, text
-from sqlalchemy.orm import sessionmaker
-
 from app.core.config import ExecutionSettings, Settings
 from app.core.errors import (
     ApprovalRequiredError,
@@ -21,6 +18,8 @@ from app.services.blastshield_analyzer import BlastShieldAnalyzer
 from app.services.execution_coordinator import ExecutionCoordinator
 from app.services.executor import Executor
 from app.services.revalidator import Revalidator
+from sqlalchemy import create_engine, text
+from sqlalchemy.orm import sessionmaker
 
 ANALYSIS_DATABASE_URL = os.getenv("BLASTSHIELD_TEST_DATABASE_URL")
 APP_DATABASE_URL = os.getenv("BLASTSHIELD_TEST_APP_DATABASE_URL")

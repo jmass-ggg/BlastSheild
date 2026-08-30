@@ -1,7 +1,6 @@
-from sqlglot import parse_one
-
 from app.services.query_planner import build_direct_count_query
 from app.services.sql_parser import parse_sql
+from sqlglot import parse_one
 
 
 def test_builds_count_without_ever_reusing_delete_node() -> None:

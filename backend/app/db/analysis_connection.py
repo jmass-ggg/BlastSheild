@@ -22,13 +22,12 @@ def analysis_transaction(engine: Engine | None = None) -> Iterator[Connection]:
     settings = get_settings()
     selected_engine = engine or get_analysis_engine()
 
-    with selected_engine.connect() as connection:
-        with connection.begin():
-            connection.exec_driver_sql("SET TRANSACTION READ ONLY")
-            connection.exec_driver_sql(
-                f"SET LOCAL statement_timeout = {settings.statement_timeout_ms}"
-            )
-            connection.exec_driver_sql(
-                f"SET LOCAL lock_timeout = {settings.lock_timeout_ms}"
-            )
-            yield connection
+    with selected_engine.connect() as connection, connection.begin():
+        connection.exec_driver_sql("SET TRANSACTION READ ONLY")
+        connection.exec_driver_sql(
+            f"SET LOCAL statement_timeout = {settings.statement_timeout_ms}"
+        )
+        connection.exec_driver_sql(
+            f"SET LOCAL lock_timeout = {settings.lock_timeout_ms}"
+        )
+        yield connection

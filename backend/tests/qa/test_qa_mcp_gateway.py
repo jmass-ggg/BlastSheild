@@ -1,13 +1,10 @@
-import pytest
 import httpx
+import pytest
+from app.main import app
 from blastshield_mcp.client import BlastShieldAPIClient
 from blastshield_mcp.server import (
-    blastshield_analyze,
-    blastshield_get_report,
-    blastshield_request_execution,
     mcp,
 )
-from app.main import app
 
 
 @pytest.mark.anyio
@@ -15,7 +12,7 @@ async def test_mcp_tools_with_asgi_backend(analyzer_engine, app_engine):
     """Test MCP tools communicating directly with ASGI app transport."""
     async with httpx.AsyncClient(
         transport=httpx.ASGITransport(app=app), base_url="http://testserver"
-    ) as asgi_client:
+    ):
         client = BlastShieldAPIClient(
             "http://testserver",
             transport=httpx.ASGITransport(app=app),
