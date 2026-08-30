@@ -13,6 +13,7 @@ import { ActionTimeline } from '../components/timeline/ActionTimeline';
 import { DEFAULT_SQL, PRESET_QUERIES } from '../constants/presetQueries';
 import { ApiError, analyze, healthCheck, listAnalyses, rejectAnalysis } from '../lib/apiClient';
 import { adaptAnalysis } from '../lib/adaptAnalysis';
+import type { AnalysisResponse } from '../types/api';
 import { AnalysisView, ConnectionState, ReportOrigin, TableSchema } from '../types';
 
 export default function Home() {
