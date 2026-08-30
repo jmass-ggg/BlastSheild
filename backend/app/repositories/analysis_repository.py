@@ -280,16 +280,22 @@ class AnalysisRepository:
             session.expunge(record)
             return record
 
-    def list_completed(self, *, limit: int = 100) -> list[AnalysisRecord]:
+    def list_completed(
+        self,
+        *,
+        limit: int = 100,
+        source: str | None = None,
+    ) -> list[AnalysisRecord]:
         with self._session_factory() as session:
-            records = list(
-                session.scalars(
-                    select(AnalysisRecord)
-                    .where(AnalysisRecord.report != {})
-                    .order_by(AnalysisRecord.created_at.desc())
-                    .limit(limit)
-                )
+            query = (
+                select(AnalysisRecord)
+                .where(AnalysisRecord.report != {})
+                .order_by(AnalysisRecord.created_at.desc())
+                .limit(limit)
             )
+            if source is not None:
+                query = query.where(AnalysisRecord.source == source)
+            records = list(session.scalars(query))
             for record in records:
                 session.expunge(record)
             return records
