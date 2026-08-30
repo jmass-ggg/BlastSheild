@@ -13,6 +13,7 @@ import { ActionTimeline } from '../components/timeline/ActionTimeline';
 import { DEFAULT_SQL, PRESET_QUERIES } from '../constants/presetQueries';
 import { ApiError, analyze, getAnalysis, healthCheck, listAnalyses, rejectAnalysis } from '../lib/apiClient';
 import { adaptAnalysis } from '../lib/adaptAnalysis';
+import { filterUnseenReports, enqueuePendingReports, resolveActiveStatusUpdate } from '../lib/pollingManager';
 import type { AnalysisResponse } from '../types/api';
 import { AnalysisView, ConnectionState, ReportOrigin, TableSchema } from '../types';
 
@@ -92,68 +93,60 @@ export default function Home() {
     let cancelled = false;
     let pollSeq = 0;
 
+    const refreshActiveView = async (activeView: AnalysisView) => {
+      try {
+        const report = await getAnalysis(activeView.analysisId);
+        const nextStatus = resolveActiveStatusUpdate(activeView.status, report.status);
+        if (nextStatus) {
+          setView((prev) => (prev && prev.analysisId === report.analysis_id ? { ...prev, status: nextStatus } : prev));
+        }
+      } catch {
+        // best-effort active report polling
+      }
+    };
+
+    const processNewMcpReports = (newReports: AnalysisResponse[], hasView: boolean) => {
+      if (newReports.length === 0) return;
+      for (const r of newReports) knownMcpIds.current.add(r.analysis_id);
+
+      if (!hasView) {
+        const adapted = adaptAnalysis(newReports[0], DEFAULT_SQL);
+        setSelectedTable(adapted.targetTable);
+        setView(adapted);
+        setOrigin('TRUEFORGE_MCP');
+        setReceivedAt(new Date());
+        setShowNewReportNotice(true);
+        if (noticeTimerRef.current) window.clearTimeout(noticeTimerRef.current);
+        noticeTimerRef.current = window.setTimeout(() => setShowNewReportNotice(false), 6000);
+        window.setTimeout(() => reportRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+      } else {
+        setPendingReports((prev) => enqueuePendingReports(prev, newReports));
+        setShowNewReportNotice(true);
+      }
+    };
+
     const syncLatestReport = async () => {
       if (isAnalyzing || isExecuteOpenRef.current || isRejectingRef.current) return;
       const currentSeq = ++pollSeq;
       try {
         const currentView = viewRef.current;
-
-        // 1. Authoritatively update the viewed analysis lifecycle status
         if (currentView) {
-          try {
-            const activeReport = await getAnalysis(currentView.analysisId);
-            if (!cancelled && currentSeq === pollSeq && viewRef.current?.analysisId === activeReport.analysis_id) {
-              const terminalStatuses = ['APPROVED', 'EXECUTED', 'REJECTED', 'STALE'];
-              if (!(terminalStatuses.includes(viewRef.current.status) && activeReport.status === 'PENDING_APPROVAL')) {
-                setView((prev) => (prev && prev.analysisId === activeReport.analysis_id ? { ...prev, status: activeReport.status } : prev));
-              }
-            }
-          } catch {
-            // best-effort active report polling
-          }
+          await refreshActiveView(currentView);
         }
 
-        // 2. Discover incoming external analyses created by TrueForge/MCP
         const mcpReports = await listAnalyses(10, { source: 'trueforge_agent' });
         if (cancelled || currentSeq !== pollSeq) return;
 
         if (!hasEstablishedReportBaseline.current) {
           hasEstablishedReportBaseline.current = true;
-          for (const r of mcpReports) {
-            knownMcpIds.current.add(r.analysis_id);
-          }
+          for (const r of mcpReports) knownMcpIds.current.add(r.analysis_id);
           return;
         }
 
-        const newMcpReports = mcpReports.filter((r) => !knownMcpIds.current.has(r.analysis_id));
-        if (newMcpReports.length === 0) return;
-
-        for (const r of newMcpReports) {
-          knownMcpIds.current.add(r.analysis_id);
-        }
-
-        if (!currentView) {
-          // If dashboard is empty, load the newest incoming MCP report
-          const latest = newMcpReports[0];
-          const adapted = adaptAnalysis(latest, DEFAULT_SQL);
-          setSelectedTable(adapted.targetTable);
-          setView(adapted);
-          setOrigin('TRUEFORGE_MCP');
-          setReceivedAt(new Date());
-          setShowNewReportNotice(true);
-          if (noticeTimerRef.current) window.clearTimeout(noticeTimerRef.current);
-          noticeTimerRef.current = window.setTimeout(() => setShowNewReportNotice(false), 6000);
-          window.setTimeout(
-            () => reportRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
-            50,
-          );
-        } else {
-          // If viewing an existing analysis, queue all new MCP reports without dropping any
-          setPendingReports((prev) => [...newMcpReports, ...prev]);
-          setShowNewReportNotice(true);
-        }
+        const unseen = filterUnseenReports(mcpReports, knownMcpIds.current);
+        processNewMcpReports(unseen, currentView !== null);
       } catch {
-        // The prompt owns user-facing connection errors. Background sync is best effort.
+        // best-effort background sync
       }
     };
 

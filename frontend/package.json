@@ -6,7 +6,8 @@
     "dev": "next dev -p 3000",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint . --max-warnings=0"
+    "lint": "eslint . --max-warnings=0",
+    "test": "node --experimental-strip-types --test src/lib/pollingManager.test.ts"
   },
   "dependencies": {
     "@types/dagre": "^0.7.54",
