@@ -275,6 +275,7 @@ class AnalysisRepository:
             session.commit()
 
     def get(self, analysis_id: uuid.UUID) -> AnalysisRecord:
+        """Retrieve an AnalysisRecord by its primary key UUID."""
         with self._session_factory() as session:
             record = self._get_or_raise(session, analysis_id)
             session.expunge(record)
@@ -286,6 +287,7 @@ class AnalysisRepository:
         limit: int = 100,
         source: str | None = None,
     ) -> list[AnalysisRecord]:
+        """List completed analysis records ordered by creation time descending, optionally filtered by source."""
         with self._session_factory() as session:
             query = (
                 select(AnalysisRecord)

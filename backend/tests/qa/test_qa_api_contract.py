@@ -154,6 +154,33 @@ def test_list_analyses_and_pagination(qa_client: TestClient):
     assert qa_client.get("/api/v1/analyses?limit=invalid").status_code == 422
 
 
+def test_list_analyses_source_filtering(qa_client: TestClient):
+    """Verify GET /api/v1/analyses?source=... filters by source and excludes others."""
+    # Create analyses with distinct sources
+    id_ui = qa_client.post(
+        "/api/v1/analyze",
+        json={"sql": "DELETE FROM users WHERE id = 10", "source": "ui"},
+    ).json()["analysis_id"]
+    id_mcp = qa_client.post(
+        "/api/v1/analyze",
+        json={"sql": "DELETE FROM users WHERE id = 11", "source": "trueforge_agent"},
+    ).json()["analysis_id"]
+
+    # Filter by source=ui
+    res_ui = qa_client.get("/api/v1/analyses?source=ui")
+    assert res_ui.status_code == 200
+    ui_ids = [item["analysis_id"] for item in res_ui.json()]
+    assert id_ui in ui_ids
+    assert id_mcp not in ui_ids
+
+    # Filter by source=trueforge_agent
+    res_mcp = qa_client.get("/api/v1/analyses?source=trueforge_agent")
+    assert res_mcp.status_code == 200
+    mcp_ids = [item["analysis_id"] for item in res_mcp.json()]
+    assert id_mcp in mcp_ids
+    assert id_ui not in mcp_ids
+
+
 def test_get_analysis_by_id(qa_client: TestClient):
     """Verify GET /api/v1/analyses/{analysis_id} retrieves exact report and handles 404/422."""
     create_res = qa_client.post(

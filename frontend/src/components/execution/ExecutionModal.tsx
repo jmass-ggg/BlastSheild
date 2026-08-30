@@ -27,7 +27,7 @@ interface ExecutionModalProps {
   view: AnalysisView;
   onClose: () => void;
   /** Fired after any transition that changes the analysis status server-side. */
-  onStatusChange: (status: string) => void;
+  onStatusChange: (analysisId: string, status: string) => void;
 }
 
 export const ExecutionModal: React.FC<ExecutionModalProps> = ({
@@ -98,7 +98,7 @@ export const ExecutionModal: React.FC<ExecutionModalProps> = ({
       if (view.status === 'PENDING_APPROVAL') {
         setStep('Recording human approval...');
         const approval = await approveAnalysis(targetId, { actor: 'ui' });
-        onStatusChange(approval.status);
+        onStatusChange(targetId, approval.status);
       }
 
       setStep('Revalidating against production, then committing...');
@@ -106,13 +106,13 @@ export const ExecutionModal: React.FC<ExecutionModalProps> = ({
 
       if (isStale(execution)) {
         setPhase('stale');
-        onStatusChange('STALE');
+        onStatusChange(targetId, 'STALE');
         return;
       }
 
       setResult(execution);
       setPhase('success');
-      onStatusChange(execution.status);
+      onStatusChange(targetId, execution.status);
     } catch (caught) {
       if (caught instanceof ApiError) {
         setError(`${caught.code}: ${caught.message}`);

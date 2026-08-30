@@ -1,7 +1,7 @@
 # BlastShield
 
 > **An AI agent proposed `DELETE FROM users WHERE last_login < NOW() - INTERVAL '2 years'`.**
-> BlastShield intercepted it, calculated **40 direct rows → 252 cascading dependents → 14 active subscriptions → $406 MRR at risk → Risk 60 / HIGH**, showed the human a dependency graph and a safe soft-delete alternative, waited for approval, revalidated against production, then executed — all in one auditable lifecycle.
+> BlastShield intercepted it, calculated **40 direct rows → 252 cascading dependents → 14 active subscriptions → $406 MRR at risk → Risk 68 / HIGH**, showed the human a dependency graph and a safe soft-delete alternative, waited for approval, revalidated against production, then executed — all in one auditable lifecycle.
 
 BlastShield is a **safety gateway and visual intelligence dashboard** for destructive PostgreSQL operations proposed by AI agents. It turns a dangerous one-liner into a fully-audited, human-approved action with zero guesswork.
 
@@ -12,7 +12,7 @@ AI Agent proposes DELETE
   BlastShield analyzes
   ├─ FK blast-radius DAG    → 40 direct + 252 cascade rows
   ├─ Business impact        → 14 subscriptions, $406 MRR at risk
-  ├─ Risk score             → 60 / HIGH
+  ├─ Risk score             → 68 / HIGH
   └─ Safer alternative      → previewed + copyable soft-delete SQL
         │
         ▼  (human reviews the visual dashboard)
@@ -187,7 +187,7 @@ Open **[http://localhost:3000](http://localhost:3000)** in your browser.
    ```sql
    DELETE FROM users WHERE last_login < NOW() - INTERVAL '2 years';
    ```
-2. **Run Impact Analysis:** Click **Run Impact Analysis**. BlastShield intercepts the query read-only, traverses the live foreign-key graph, measures 40 direct rows and 252 cascading dependents, and generates a risk score of `60 / HIGH`.
+2. **Run Impact Analysis:** Click **Run Impact Analysis**. BlastShield intercepts the query read-only, traverses the live foreign-key graph, measures 40 direct rows and 252 cascading dependents, and generates a risk score of `68 / HIGH`.
 3. **Inspect Blast Radius:** The interactive React Flow DAG renders the full cascade propagation tree (`users` → `orders` → `payments`, `subscriptions`, `sessions`).
 4. **Evaluate Safer Alternatives:** View the synthesized soft-delete `UPDATE` statement side-by-side with the original query.
 5. **Approval & Controlled Execution:**
@@ -225,12 +225,16 @@ rollback, stale detection, concurrency, and database permissions.
 ```text
 GET  /api/v1/health
 POST /api/v1/analyze
-GET  /api/v1/analyses
+GET  /api/v1/analyses[?limit=100][&source=ui|trueforge_agent]
 GET  /api/v1/analyses/{analysis_id}
 POST /api/v1/analyses/{analysis_id}/approve
 POST /api/v1/analyses/{analysis_id}/reject
 POST /api/v1/analyses/{analysis_id}/execute
 ```
+
+- `GET /api/v1/analyses` accepts optional query parameters:
+  - `limit` (*integer, 1–100, default 100*): Maximum number of completed records to return.
+  - `source` (*string, optional*): Filter records by origin, e.g. `ui`, `trueforge_agent`, `qa`, `demo`.
 
 Execution accepts only the path `analysis_id`; there is no request-body SQL and
 no generic execution endpoint.
