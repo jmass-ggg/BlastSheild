@@ -53,10 +53,6 @@ export function adaptAnalysis(
     totalRows: report.impact.total_rows,
     dependencies: report.dependencies,
 
-    activeSubscriptions: report.business_impact.active_subscriptions,
-    mrrAtRisk: report.business_impact.mrr_at_risk,
-    arrAtRisk: report.business_impact.arr_at_risk,
-
     safer: {
       available: report.safer_alternative.available,
       sql: report.safer_alternative.sql ?? null,

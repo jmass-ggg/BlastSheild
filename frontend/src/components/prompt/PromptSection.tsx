@@ -1,7 +1,7 @@
 'use client';
 
-import React from 'react';
-import { Terminal, Loader2, Sparkles, Zap, AlertCircle } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { ChevronDown, Terminal, Loader2, Sparkles, Zap, AlertCircle } from 'lucide-react';
 import { PRESET_QUERIES } from '../../constants/presetQueries';
 
 interface PromptSectionProps {
@@ -23,6 +23,12 @@ export const PromptSection: React.FC<PromptSectionProps> = ({
   activePresetKey,
   error,
 }) => {
+  const [isOpen, setIsOpen] = useState(Boolean(error));
+
+  useEffect(() => {
+    if (error) setIsOpen(true);
+  }, [error]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSubmit();
@@ -37,17 +43,25 @@ export const PromptSection: React.FC<PromptSectionProps> = ({
   };
 
   return (
-    <section className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-3.5">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 text-caption font-semibold text-slate-700 uppercase tracking-wider">
-          <Terminal className="w-4 h-4 text-amber-500" />
-          <span>1. Enter SQL Statement</span>
+    <details
+      className="group rounded-2xl border border-slate-200 bg-white shadow-sm"
+      open={isOpen}
+      onToggle={(event) => setIsOpen(event.currentTarget.open)}
+    >
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2">
+        <div className="flex items-center gap-3">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-700">
+            <Terminal className="h-4 w-4" />
+          </div>
+          <div>
+            <div className="text-sm font-semibold text-slate-900">Developer Mode: Analyze SQL manually</div>
+            <div className="text-xs text-slate-500">Secondary testing path · one PostgreSQL DELETE statement</div>
+          </div>
         </div>
-        <span className="text-caption text-slate-400 font-normal">
-          One DELETE statement · ⌘/Ctrl + Enter to run
-        </span>
-      </div>
+        <ChevronDown className="h-4 w-4 text-slate-400 transition-transform group-open:rotate-180" />
+      </summary>
 
+      <div className="space-y-3.5 border-t border-slate-200 p-5">
       <form onSubmit={handleSubmit} className="space-y-2.5">
         <textarea
           value={sql}
@@ -68,7 +82,7 @@ export const PromptSection: React.FC<PromptSectionProps> = ({
             </div>
           ) : (
             <span className="text-caption text-slate-400 font-normal">
-              Analysis runs read-only against production metadata.
+              Analysis runs through the read-only analyzer role.
             </span>
           )}
 
@@ -92,7 +106,7 @@ export const PromptSection: React.FC<PromptSectionProps> = ({
         </div>
       </form>
 
-      <div className="flex items-center flex-wrap gap-2 pt-2 border-t border-slate-100">
+      <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 pt-2">
         <span className="text-badge font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1">
           <Zap className="w-3 h-3 text-amber-500" /> Presets:
         </span>
@@ -113,6 +127,7 @@ export const PromptSection: React.FC<PromptSectionProps> = ({
           </button>
         ))}
       </div>
-    </section>
+      </div>
+    </details>
   );
 };

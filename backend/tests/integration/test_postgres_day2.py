@@ -80,10 +80,7 @@ def test_complete_analysis_is_correlated_scored_and_persisted(engines) -> None:
         "sessions": 32,
     }
     assert all(item.measurement == "EXACT" for item in report.dependencies)
-    assert report.business_impact.active_subscriptions == 14
-    assert report.business_impact.mrr_at_risk == 406
-    assert report.business_impact.arr_at_risk == 4_872
-    assert report.risk.score == 60
+    assert report.risk.score == 68
     assert report.risk.level == "HIGH"
     assert report.safer_alternative.available is True
     assert report.safer_alternative.sql is not None

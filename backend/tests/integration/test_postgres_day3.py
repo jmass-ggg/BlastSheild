@@ -120,25 +120,6 @@ def test_complete_approval_stale_execution_and_rollback_lifecycle() -> None:
     with execution_engine.begin() as connection:
         connection.execute(text("DELETE FROM users WHERE id = 1001"))
 
-    business_stale = analyzer.analyze(request)
-    repository.approve_pending(business_stale.analysis_id)
-    with execution_engine.begin() as connection:
-        connection.execute(
-            text(
-                "UPDATE subscriptions SET monthly_price = monthly_price + 1 "
-                "WHERE user_id = 2"
-            )
-        )
-    business_result = coordinator.execute(business_stale.analysis_id)
-    assert isinstance(business_result, StaleExecutionResponse)
-    with execution_engine.begin() as connection:
-        connection.execute(
-            text(
-                "UPDATE subscriptions SET monthly_price = monthly_price - 1 "
-                "WHERE user_id = 2"
-            )
-        )
-
     graph_stale = analyzer.analyze(request)
     repository.approve_pending(graph_stale.analysis_id)
     with admin_engine.begin() as connection:

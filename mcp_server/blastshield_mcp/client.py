@@ -55,8 +55,20 @@ class BlastShieldAPIClient:
     async def get_report(self, analysis_id: str) -> dict[str, Any]:
         return await self._request("GET", f"/api/v1/analyses/{analysis_id}")
 
+    async def approve(
+        self,
+        analysis_id: str,
+        *,
+        actor: str,
+        reason: str,
+    ) -> dict[str, Any]:
+        return await self._request(
+            "POST",
+            f"/api/v1/analyses/{analysis_id}/approve",
+            json_body={"actor": actor, "reason": reason},
+        )
+
     async def request_execution(self, analysis_id: str) -> dict[str, Any]:
         return await self._request(
             "POST", f"/api/v1/analyses/{analysis_id}/execute"
         )
-

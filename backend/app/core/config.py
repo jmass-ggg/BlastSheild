@@ -24,10 +24,6 @@ class Settings(BaseSettings):
     lock_timeout_ms: int = Field(default=1_000, ge=1, le=60_000)
     fk_max_depth: int = Field(default=3, ge=1, le=10)
     exact_count_max_cost: float = Field(default=100_000, ge=0)
-    business_subscription_table: str = "subscriptions"
-    business_subscription_status_column: str = "status"
-    business_subscription_active_value: str = "active"
-    business_subscription_price_column: str = "monthly_price"
 
 
 class ExecutionSettings(BaseSettings):

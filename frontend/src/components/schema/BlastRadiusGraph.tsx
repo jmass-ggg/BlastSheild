@@ -101,7 +101,7 @@ const BlastRadiusCustomNode: React.FC<NodeProps> = ({ data }) => {
     headerBadge = (
       <span className="text-badge font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full font-mono border border-amber-300 flex items-center gap-1">
         <ArrowDown className="w-3 h-3 text-amber-600" />
-        CASCADE ({formatNumber(rowsAffected)})
+        DEPENDENT ({formatNumber(rowsAffected)})
       </span>
     );
   }
@@ -113,6 +113,16 @@ const BlastRadiusCustomNode: React.FC<NodeProps> = ({ data }) => {
   return (
     <div
       onClick={() => onSelectTable(tableName)}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          onSelectTable(tableName);
+        }
+      }}
+      role="button"
+      tabIndex={0}
+      aria-label={`Inspect table ${tableName}, ${formatNumber(rowsAffected)} rows affected`}
+      title={tableName}
       className={`w-[250px] bg-white rounded-xl border text-left cursor-pointer transition-all duration-200 select-none overflow-hidden ${cardBorder}`}
     >
       <Handle
@@ -147,13 +157,15 @@ const BlastRadiusCustomNode: React.FC<NodeProps> = ({ data }) => {
             <span className="text-slate-400">0 rows affected</span>
           )}
         </span>
-        <span className="text-slate-400">
-          of {formatNumber(totalRows || tableSchema?.rowCount || 0)} total
-        </span>
+        {(totalRows > 0 || (tableSchema?.rowCount ?? 0) > 0) && (
+          <span className="text-slate-400">
+            of {formatNumber(totalRows || tableSchema?.rowCount || 0)} fixture total
+          </span>
+        )}
       </div>
 
       {/* Columns Preview */}
-      {tableSchema && (
+      {tableSchema && tableSchema.columns.length > 0 && (
         <div className="p-2.5 space-y-1 text-caption font-mono bg-white">
           {tableSchema.columns.slice(0, 3).map((col) => (
             <div
@@ -217,6 +229,9 @@ const BlastRadiusCustomEdge: React.FC<EdgeProps> = ({
   const edgeData = data as unknown as BlastEdgeData;
   const isSafer = edgeData?.isSaferMode;
   const isAffected = edgeData?.isAffected && !isSafer;
+  const action = (edgeData?.onDelete || 'NO ACTION').toUpperCase();
+  const isRestricted = action === 'RESTRICT' || action === 'NO ACTION';
+  const isSetAction = action === 'SET NULL' || action === 'SET_NULL' || action === 'SET DEFAULT';
 
   const [edgePath, labelX, labelY] = getBezierPath({
     sourceX,
@@ -229,6 +244,10 @@ const BlastRadiusCustomEdge: React.FC<EdgeProps> = ({
 
   const strokeColor = isSafer
     ? '#10b981' // emerald-500
+    : isRestricted
+    ? '#7c3aed' // violet-600
+    : isSetAction
+    ? '#0284c7' // sky-600
     : isAffected
     ? '#f97316' // orange-500
     : '#cbd5e1'; // slate-300
@@ -254,8 +273,8 @@ const BlastRadiusCustomEdge: React.FC<EdgeProps> = ({
         fill="none"
         stroke={strokeColor}
         strokeWidth={isAffected || isSafer ? 2.5 : 1.75}
-        strokeDasharray={isAffected ? '6,4' : undefined}
-        className={isAffected ? 'animate-flow-dash' : undefined}
+          strokeDasharray={isAffected && !isRestricted ? '6,4' : undefined}
+          className={isAffected && !isRestricted ? 'animate-flow-dash' : undefined}
       />
 
       {/* Edge Cascade Label */}
@@ -269,12 +288,16 @@ const BlastRadiusCustomEdge: React.FC<EdgeProps> = ({
           className={`px-2 py-0.5 rounded text-badge font-mono font-bold shadow-2xs border ${
             isSafer
               ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+              : isRestricted
+              ? 'bg-violet-50 text-violet-800 border-violet-300'
+              : isSetAction
+              ? 'bg-sky-50 text-sky-800 border-sky-300'
               : isAffected
               ? 'bg-amber-100 text-amber-900 border-amber-300'
               : 'bg-white text-slate-600 border-slate-200'
           }`}
         >
-          {isSafer ? 'SAFEGUARDED' : edgeData?.onDelete || 'FK CASCADE'}
+          {isSafer ? 'PROJECTED UPDATE' : action}
         </div>
       </EdgeLabelRenderer>
     </>
@@ -403,37 +426,7 @@ const BlastRadiusGraphInner: React.FC<BlastRadiusGraphInnerProps> = ({
       return getLayoutedElements(rawNodes, rawEdges, 'TB');
     }
 
-    // Fallback: render baseline schema entities if no active analysis graph
-    const schemaNodes: Node[] = Object.entries(tables).map(([name, table]) => {
-      const impact = affectedMap[name];
-      const isRoot = name === 'users';
-      return {
-        id: name,
-        type: 'blastNode',
-        data: {
-          tableName: name,
-          tableSchema: table,
-          impact,
-          isRoot,
-          isSelected: selectedTable === name,
-          isSaferMode,
-          rowsAffected: impact?.count || 0,
-          totalRows: table.rowCount,
-          depth: isRoot ? 0 : 1,
-          onSelectTable,
-        },
-        position: { x: 0, y: 0 },
-      };
-    });
-
-    const schemaEdges: Edge[] = [
-      { id: 'users-orders', source: 'users', target: 'orders', type: 'blastEdge', data: { onDelete: 'CASCADE', isSaferMode, isAffected: !!affectedMap['orders'] } },
-      { id: 'orders-payments', source: 'orders', target: 'payments', type: 'blastEdge', data: { onDelete: 'CASCADE', isSaferMode, isAffected: !!affectedMap['payments'] } },
-      { id: 'users-subscriptions', source: 'users', target: 'subscriptions', type: 'blastEdge', data: { onDelete: 'CASCADE', isSaferMode, isAffected: !!affectedMap['subscriptions'] } },
-      { id: 'users-sessions', source: 'users', target: 'sessions', type: 'blastEdge', data: { onDelete: 'CASCADE', isSaferMode, isAffected: !!affectedMap['sessions'] } },
-    ];
-
-    return getLayoutedElements(schemaNodes, schemaEdges, 'TB');
+    return { nodes: [], edges: [] };
   }, [graph, tables, affectedMap, selectedTable, isSaferMode, targetTable, onSelectTable]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
@@ -450,7 +443,7 @@ const BlastRadiusGraphInner: React.FC<BlastRadiusGraphInnerProps> = ({
   }, [initialNodes, initialEdges, setNodes, setEdges, fitView]);
 
   return (
-    <div className="w-full h-[540px] bg-slate-950/5 rounded-xl border border-slate-200 relative overflow-hidden">
+    <div className="relative h-[420px] w-full overflow-hidden rounded-xl border border-slate-200 bg-slate-950/5 sm:h-[520px]">
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -483,7 +476,7 @@ const BlastRadiusGraphInner: React.FC<BlastRadiusGraphInnerProps> = ({
         <div className="font-semibold text-slate-700 uppercase tracking-wider">
           {isSaferMode ? 'Safeguard Simulation Active' : 'Blast Radius Dependency Graph'}
         </div>
-        <div className="flex items-center gap-3 text-caption">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-caption">
           {isSaferMode ? (
             <>
               <span className="flex items-center gap-1 text-emerald-700">
@@ -499,10 +492,13 @@ const BlastRadiusGraphInner: React.FC<BlastRadiusGraphInnerProps> = ({
                 <span className="w-2.5 h-2.5 rounded-full bg-rose-500" /> Direct Target
               </span>
               <span className="flex items-center gap-1 text-amber-700">
-                <span className="w-2.5 h-2.5 rounded-full bg-amber-500" /> Cascade Deletion
+                <span className="w-2.5 h-2.5 rounded-full bg-amber-500" /> Dependent Impact
+              </span>
+              <span className="flex items-center gap-1 text-violet-700">
+                <span className="w-2.5 h-2.5 rounded-full bg-violet-600" /> Restricted
               </span>
               <span className="flex items-center gap-1 text-slate-500">
-                <span className="w-2.5 h-2.5 rounded-full bg-slate-300" /> Unaffected
+                <span className="w-2.5 h-2.5 rounded-full bg-slate-300" /> Reference only
               </span>
             </>
           )}

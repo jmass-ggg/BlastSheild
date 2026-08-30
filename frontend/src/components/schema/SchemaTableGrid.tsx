@@ -52,13 +52,13 @@ export const SchemaTableGrid: React.FC<SchemaTableGridProps> = ({
                 )}
               </div>
 
-              <div className="font-mono text-body-sm font-semibold text-slate-900 flex items-center gap-1">
+              <div className="font-mono text-body-sm font-semibold text-slate-900 flex items-center gap-1" title={tblName}>
                 <Database className="w-3.5 h-3.5 text-slate-500" />
-                <span>{tblName}</span>
+                <span className="truncate">{tblName}</span>
               </div>
 
               <div className="text-caption text-slate-500 mt-0.5 font-normal">
-                {formatNumber(table.rowCount)} rows
+                {table.rowCount > 0 ? `${formatNumber(table.rowCount)} fixture rows` : 'Live total unavailable'}
               </div>
             </div>
 

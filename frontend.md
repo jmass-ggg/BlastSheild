@@ -1,5 +1,9 @@
 # BlastShield — Developer 2: Frontend
 
+> Historical implementation brief. The current generic MVP displays measured
+> row/FK impact and deterministic database risk, without revenue projections.
+> See `README.md` for the implemented interface.
+
 ## Role
 
 You are the Frontend engineer on a two-developer, four-day hackathon project called BlastShield. Another developer is simultaneously building the entire backend/database/MCP system. Your responsibility is to build an exceptional BlastShield frontend while staying strictly inside your ownership boundary.

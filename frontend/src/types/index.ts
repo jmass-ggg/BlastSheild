@@ -10,6 +10,10 @@ export type { RiskLevel, ReportGraph, RiskBreakdown, DependencyImpact, TimelineI
 
 export type ImpactRole = 'DIRECT' | 'CASCADE' | 'UNAFFECTED';
 
+export type ConnectionState = 'checking' | 'online' | 'offline';
+
+export type ReportOrigin = 'TRUEFORGE_MCP' | 'DASHBOARD';
+
 export interface SchemaColumn {
   name: string;
   type: string;
@@ -48,7 +52,7 @@ export interface AnalysisView {
   status: string;
   requiresApproval: boolean;
 
-  /** The SQL that was submitted; the report itself does not echo it back. */
+  /** The SQL echoed by the report, with the submitted statement as a compatibility fallback. */
   sql: string;
   operation: string;
   targetTable: string;
@@ -63,10 +67,6 @@ export interface AnalysisView {
   dependentRows: number;
   totalRows: number;
   dependencies: DependencyImpact[];
-
-  activeSubscriptions: number;
-  mrrAtRisk: number;
-  arrAtRisk: number;
 
   safer: SaferAlternativeView;
   affectedTableMap: Record<string, TableImpactInfo>;

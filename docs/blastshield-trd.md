@@ -1,5 +1,8 @@
 # BlastShield — Technical Requirements Document
 
+> Archived v1 planning document. The implemented generic MVP excludes
+> application-specific subscription and revenue-impact analysis.
+
 **Product:** BlastShield — AI Pre-Execution Impact Analysis for TrueForge Agents
 **Version:** 1.0 (Hackathon MVP)
 **Status:** Draft for implementation

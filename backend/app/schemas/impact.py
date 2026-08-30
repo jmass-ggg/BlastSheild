@@ -26,10 +26,3 @@ class ImpactSummary(BaseModel):
     direct_rows: int
     dependent_rows: int
     total_rows: int
-
-
-class BusinessImpact(BaseModel):
-    active_subscriptions: int = 0
-    mrr_at_risk: float = 0
-    arr_at_risk: float = 0
-

@@ -66,7 +66,6 @@ class BlastShieldAnalyzer:
             graph = snapshot.graph
             direct = snapshot.direct
             dependencies = snapshot.dependencies
-            business = snapshot.business_impact
             safer = generate_safer_alternative(
                 parsed,
                 snapshot.target_metadata,
@@ -76,9 +75,8 @@ class BlastShieldAnalyzer:
                 operation=parsed.operation,
                 direct_rows=direct.rows,
                 dependencies=dependencies,
-                business_impact=business,
                 has_where=parsed.has_where,
-                recoverable=safer.available,
+                recoverable=False,
             )
 
             dependent_rows = sum(item.rows for item in dependencies)
@@ -121,7 +119,6 @@ class BlastShieldAnalyzer:
                     total_rows=direct.rows + dependent_rows,
                 ),
                 dependencies=dependencies,
-                business_impact=business,
                 risk=risk,
                 graph=report_graph,
                 safer_alternative=safer,

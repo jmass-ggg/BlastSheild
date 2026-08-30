@@ -37,7 +37,7 @@ export const ImpactComparison: React.FC<ImpactComparisonProps> = ({
       <RiskGauge
         score={currentScore}
         level={currentLevel}
-        breakdown={view.riskBreakdown}
+        breakdown={isSaferPreview ? undefined : view.riskBreakdown}
         isSaferMode={isSaferPreview}
         originalScore={view.riskScore}
         originalLevel={view.riskLevel}

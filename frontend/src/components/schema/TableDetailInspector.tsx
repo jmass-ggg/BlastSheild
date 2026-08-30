@@ -1,25 +1,41 @@
 'use client';
 
 import React from 'react';
-import { TableSchema, TableImpactInfo } from '../../types';
+import { DependencyImpact, TableSchema, TableImpactInfo } from '../../types';
 import { formatNumber } from '../../lib/formatters';
 
 interface TableDetailInspectorProps {
-  table: TableSchema;
+  tableName: string;
+  table?: TableSchema;
   impactInfo?: TableImpactInfo;
+  dependency?: DependencyImpact;
 }
 
-export const TableDetailInspector: React.FC<TableDetailInspectorProps> = ({ table, impactInfo }) => {
+export const TableDetailInspector: React.FC<TableDetailInspectorProps> = ({
+  tableName,
+  table,
+  impactInfo,
+  dependency,
+}) => {
   return (
     <div className="bg-slate-50 rounded-xl p-4 border border-slate-200 space-y-3">
       {/* Inspector Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 pb-3">
         <div>
           <div className="flex items-center gap-2">
-            <span className="text-body font-bold text-slate-900 font-mono">{table.name}</span>
-            <span className="text-body-sm text-slate-500 font-normal">({formatNumber(table.rowCount)} total records)</span>
+            <span className="text-body font-bold text-slate-900 font-mono">{tableName}</span>
+            {table && table.rowCount > 0 && (
+              <span className="text-body-sm text-slate-500 font-normal">({formatNumber(table.rowCount)} fixture records)</span>
+            )}
           </div>
-          <p className="text-body-sm text-slate-600 mt-0.5 font-normal">{table.description}</p>
+          <p className="text-body-sm text-slate-600 mt-0.5 font-normal">
+            {table?.description ?? 'Discovered by live foreign-key analysis.'}
+          </p>
+          {dependency && (
+            <p className="mt-1 font-mono text-xs text-slate-500">
+              Path: {dependency.path.join(' → ')} · ON DELETE {dependency.on_delete}
+            </p>
+          )}
         </div>
 
         {impactInfo ? (
@@ -36,7 +52,7 @@ export const TableDetailInspector: React.FC<TableDetailInspectorProps> = ({ tabl
         )}
       </div>
 
-      {/* Columns Schema Table */}
+      {table && table.columns.length > 0 ? (
       <div className="overflow-x-auto">
         <table className="w-full text-left text-caption font-mono">
           <thead>
@@ -79,6 +95,11 @@ export const TableDetailInspector: React.FC<TableDetailInspectorProps> = ({ tabl
           </tbody>
         </table>
       </div>
+      ) : (
+        <div className="rounded-lg border border-dashed border-slate-300 bg-white px-4 py-5 text-sm text-slate-500">
+          Column metadata is not included in the current analysis response. BlastShield is showing only measured row and relationship evidence for this table.
+        </div>
+      )}
     </div>
   );
 };

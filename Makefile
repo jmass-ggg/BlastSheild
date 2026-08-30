@@ -1,4 +1,4 @@
-.PHONY: install test test-unit test-qa test-integration test-all db-up up down logs demo-up demo-down demo-check demo-rehearse demo-reset clean
+.PHONY: install test test-unit test-qa test-integration test-all db-up up down logs demo-up demo-down demo-check demo-agent demo-rehearse demo-reset clean
 
 DEMO_PROJECT ?= blastshield-demo
 POSTGRES_PORT ?= $(shell grep POSTGRES_PORT .env 2>/dev/null | cut -d= -f2 || echo 5432)
@@ -47,6 +47,11 @@ demo-check:
 	docker --version
 	docker compose config -q
 	POSTGRES_PORT=$(POSTGRES_PORT) .venv/bin/python backend/scripts/demo_check.py
+
+demo-agent:
+	docker --version
+	docker compose config -q
+	POSTGRES_PORT=$(POSTGRES_PORT) .venv/bin/python backend/scripts/demo_check.py --agent-demo
 
 demo-rehearse:
 	docker --version

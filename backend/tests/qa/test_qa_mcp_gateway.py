@@ -48,6 +48,17 @@ def test_mcp_tool_surface_and_metadata():
     assert "blastshield_get_report" in tool_map
     assert "blastshield_request_execution" in tool_map
 
+    analyze_annotations = tool_map["blastshield_analyze"].annotations
+    report_annotations = tool_map["blastshield_get_report"].annotations
+    execution_annotations = tool_map["blastshield_request_execution"].annotations
+    assert analyze_annotations is not None
+    assert analyze_annotations.destructiveHint is False
+    assert report_annotations is not None
+    assert report_annotations.readOnlyHint is True
+    assert execution_annotations is not None
+    assert execution_annotations.readOnlyHint is False
+    assert execution_annotations.destructiveHint is True
+
     # Ensure dangerous tools are strictly NOT present
     forbidden_tools = ["run_sql", "execute_sql", "blastshield_approve", "approve_analysis", "run_raw_query"]
     for forbidden in forbidden_tools:

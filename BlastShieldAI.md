@@ -1,5 +1,9 @@
 # BlastShieldAI — Pre-Execution Impact Analysis for TrueForge Agents
 
+> Historical product exploration. The implemented hackathon MVP is
+> schema-agnostic and excludes subscription, MRR, ARR, and revenue estimates.
+> See `README.md` for current behavior.
+
 ## One-Line Product
 
 BlastShield intercepts dangerous AI-agent actions, simulates them safely, calculates their blast radius, explains the consequences, recommends safer actions, and asks for human approval before production execution.

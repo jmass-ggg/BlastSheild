@@ -1,5 +1,5 @@
 from app.schemas.graph import ColumnMetadata, TableMetadata
-from app.schemas.impact import BusinessImpact, DependencyImpact
+from app.schemas.impact import DependencyImpact
 from app.services.risk_engine import calculate_risk, risk_level
 from app.services.safer_alternative import generate_safer_alternative
 from app.services.sql_parser import parse_sql
@@ -17,9 +17,8 @@ def test_risk_level_boundaries():
     assert risk_level(100) == "CRITICAL"
 
 
-def test_risk_calculation_components():
+def test_generic_risk_calculation_components():
     """Verify risk breakdown components and capping at 100."""
-    business = BusinessImpact(active_subscriptions=5, mrr_at_risk=500.0, arr_at_risk=6000.0)
     dependencies = [
         DependencyImpact(
             table="orders",
@@ -36,7 +35,6 @@ def test_risk_calculation_components():
         operation="DELETE",
         direct_rows=25,
         dependencies=dependencies,
-        business_impact=business,
         has_where=True,
         recoverable=True,
     )
@@ -44,17 +42,16 @@ def test_risk_calculation_components():
     assert report.breakdown.operation == 20
     assert report.breakdown.direct_impact == 8
     assert report.breakdown.dependent_impact == 8
-    assert report.breakdown.cascade == 8  # depth 1 cascade
-    assert report.breakdown.business_impact == 6  # 100 <= MRR < 1000
+    assert report.breakdown.cascade == 12  # depth 1 cascade
     assert report.breakdown.recoverability == 2  # recoverable
 
-    expected_score = 20 + 8 + 8 + 8 + 6 + 2
+    expected_score = 20 + 8 + 8 + 12 + 2
     assert report.score == expected_score
     assert report.level == risk_level(expected_score)
 
 
 def test_risk_blocking_dependency():
-    """Verify RESTRICT dependency receives max cascade score (15) and blocking reason."""
+    """Verify RESTRICT receives max cascade score and a blocking reason."""
     dependencies = [
         DependencyImpact(
             table="orders",
@@ -70,11 +67,10 @@ def test_risk_blocking_dependency():
         operation="DELETE",
         direct_rows=5,
         dependencies=dependencies,
-        business_impact=BusinessImpact(),
         has_where=True,
         recoverable=True,
     )
-    assert report.breakdown.cascade == 15
+    assert report.breakdown.cascade == 25
     assert any("block the DELETE" in reason for reason in report.reasons)
 
 

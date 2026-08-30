@@ -1,4 +1,4 @@
-from app.schemas.impact import BusinessImpact, DependencyImpact
+from app.schemas.impact import DependencyImpact
 from app.schemas.risk import RiskBreakdown, RiskLevel, RiskReport
 
 
@@ -26,29 +26,17 @@ def _row_score(rows: int) -> int:
     return 20
 
 
-def _business_score(impact: BusinessImpact) -> int:
-    if impact.active_subscriptions <= 0 and impact.mrr_at_risk <= 0:
-        return 0
-    if impact.mrr_at_risk < 100:
-        return 3
-    if impact.mrr_at_risk < 1_000:
-        return 6
-    if impact.mrr_at_risk < 10_000:
-        return 10
-    return 15
-
-
 def _cascade_score(dependencies: list[DependencyImpact]) -> int:
     if not dependencies:
         return 0
     if any(item.effect == "BLOCK" for item in dependencies):
-        return 15
+        return 25
     deletion_depths = [item.depth for item in dependencies if item.effect == "DELETE"]
     if deletion_depths:
         maximum_depth = max(deletion_depths)
-        return 8 if maximum_depth == 1 else 12 if maximum_depth == 2 else 15
+        return 12 if maximum_depth == 1 else 18 if maximum_depth == 2 else 25
     if any(item.effect in {"SET_NULL", "SET_DEFAULT"} for item in dependencies):
-        return 6
+        return 8
     return 0
 
 
@@ -57,7 +45,6 @@ def calculate_risk(
     operation: str,
     direct_rows: int,
     dependencies: list[DependencyImpact],
-    business_impact: BusinessImpact,
     has_where: bool,
     recoverable: bool,
 ) -> RiskReport:
@@ -68,22 +55,20 @@ def calculate_risk(
     direct_score = _row_score(direct_rows)
     dependent_score = _row_score(dependent_rows)
     cascade_score = _cascade_score(dependencies)
-    business_score = _business_score(business_impact)
-    recoverability_score = 2 if recoverable else 5
+    recoverability_score = 2 if recoverable else 10
 
     if normalized_operation == "DELETE" and not has_where:
         operation_score = 25
         direct_score = 20
         dependent_score = 20
-        cascade_score = 15
-        recoverability_score = 5
+        cascade_score = 25
+        recoverability_score = 10
 
     breakdown = RiskBreakdown(
         operation=operation_score,
         direct_impact=direct_score,
         dependent_impact=dependent_score,
         cascade=cascade_score,
-        business_impact=business_score,
         recoverability=recoverability_score,
     )
     score = min(100, sum(breakdown.model_dump().values()))
@@ -96,11 +81,6 @@ def calculate_risk(
         reasons.append("A RESTRICT or NO ACTION dependency can block the DELETE.")
     elif any(item.effect == "DELETE" for item in dependencies):
         reasons.append("One or more foreign-key paths propagate deletion by CASCADE.")
-    if business_impact.active_subscriptions:
-        reasons.append(
-            f"{business_impact.active_subscriptions:,} active subscriptions and "
-            f"{business_impact.mrr_at_risk:,.2f} MRR are at risk."
-        )
     if normalized_operation == "DELETE" and not has_where:
         reasons.append("The DELETE has no WHERE clause and targets the entire table.")
 
