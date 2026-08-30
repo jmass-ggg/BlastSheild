@@ -10,7 +10,6 @@ import {
   Copy,
   RefreshCw,
 } from 'lucide-react';
-import confetti from 'canvas-confetti';
 import { AnalysisView } from '../../types';
 import type { ExecutionResponse } from '../../types/api';
 import {
@@ -42,6 +41,10 @@ export const ExecutionModal: React.FC<ExecutionModalProps> = ({
   const [result, setResult] = useState<ExecutionResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [confirmation, setConfirmation] = useState('');
+  const requiresTypedConfirmation = view.riskLevel === 'HIGH' || view.riskLevel === 'CRITICAL';
+  const confirmationPhrase = `EXECUTE ${view.targetTable}`;
+  const canExecute = !requiresTypedConfirmation || confirmation === confirmationPhrase;
 
   useEffect(() => {
     if (open) {
@@ -49,8 +52,18 @@ export const ExecutionModal: React.FC<ExecutionModalProps> = ({
       setStep('');
       setResult(null);
       setError(null);
+      setConfirmation('');
     }
   }, [open, view.analysisId]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && phase !== 'running') onClose();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [open, phase, onClose]);
 
   const run = useCallback(async () => {
     setPhase('running');
@@ -76,11 +89,6 @@ export const ExecutionModal: React.FC<ExecutionModalProps> = ({
       setResult(execution);
       setPhase('success');
       onStatusChange(execution.status);
-      try {
-        confetti({ particleCount: 70, spread: 60, origin: { y: 0.6 } });
-      } catch {
-        // Confetti is decorative; a blocked canvas must not break the flow.
-      }
     } catch (caught) {
       setError(
         caught instanceof ApiError
@@ -101,14 +109,19 @@ export const ExecutionModal: React.FC<ExecutionModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
-      <div className="bg-white rounded-2xl max-w-lg w-full border border-slate-200 shadow-2xl p-6 space-y-5">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="execution-dialog-title"
+        className="max-h-[92vh] w-full max-w-xl space-y-5 overflow-y-auto rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl"
+      >
         <div className="flex items-center justify-between border-b border-slate-100 pb-4 gap-3">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg bg-rose-100 text-rose-800 flex items-center justify-center font-bold shrink-0">
               <AlertTriangle className="w-5 h-5 text-rose-600" />
             </div>
             <div>
-              <h3 className="text-h4 font-bold text-slate-900 tracking-tight">
+              <h3 id="execution-dialog-title" className="text-h4 font-bold text-slate-900 tracking-tight">
                 Execute Original Action
               </h3>
               <p className="text-caption text-slate-500 font-normal">
@@ -121,6 +134,7 @@ export const ExecutionModal: React.FC<ExecutionModalProps> = ({
             onClick={onClose}
             disabled={phase === 'running'}
             className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+            aria-label="Close execution review"
           >
             <XCircle className="w-5 h-5" />
           </button>
@@ -129,19 +143,46 @@ export const ExecutionModal: React.FC<ExecutionModalProps> = ({
         {phase === 'confirm' && (
           <div className="space-y-4">
             <div className="p-3.5 bg-rose-50 rounded-xl border border-rose-200 text-body-sm text-rose-900 font-normal">
-              This permanently deletes{' '}
+              This can permanently delete{' '}
               <strong className="font-semibold">{formatNumber(view.directRows)}</strong> rows
               from <span className="font-mono">{view.targetTable}</span> and{' '}
               <strong className="font-semibold">{formatNumber(view.dependentRows)}</strong>{' '}
-              cascading rows. This cannot be undone from the UI.
+              dependent rows. The original action cannot be undone from the dashboard.
             </div>
+            <dl className="grid grid-cols-2 gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs sm:grid-cols-3">
+              <Detail label="Risk" value={`${view.riskScore}/100 ${view.riskLevel}`} />
+              <Detail label="Direct rows" value={formatNumber(view.directRows)} />
+              <Detail label="Dependent rows" value={formatNumber(view.dependentRows)} />
+              <Detail label="Total potential" value={formatNumber(view.totalRows)} />
+              <div className="col-span-2 sm:col-span-2">
+                <dt className="text-slate-500">Analysis ID</dt>
+                <dd className="mt-0.5 break-all font-mono font-semibold text-slate-900">{view.analysisId}</dd>
+              </div>
+            </dl>
             <div className="text-caption text-slate-600 font-mono bg-slate-50 p-2.5 rounded-lg border border-slate-200 break-all">
               {view.sql}
             </div>
+            {requiresTypedConfirmation && (
+              <div className="space-y-2">
+                <label htmlFor="execution-confirmation" className="block text-sm font-medium text-slate-800">
+                  Type <code className="rounded bg-slate-100 px-1.5 py-0.5 text-rose-700">{confirmationPhrase}</code> to confirm this {view.riskLevel.toLowerCase()}-risk action.
+                </label>
+                <input
+                  id="execution-confirmation"
+                  value={confirmation}
+                  onChange={(event) => setConfirmation(event.target.value)}
+                  autoComplete="off"
+                  autoFocus
+                  className="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 font-mono text-sm text-slate-900 outline-none focus:border-rose-400 focus:ring-2 focus:ring-rose-200"
+                  placeholder={confirmationPhrase}
+                />
+              </div>
+            )}
             <div className="flex gap-2.5">
               <button
                 onClick={run}
-                className="flex-1 py-3 bg-rose-600 hover:bg-rose-700 text-white font-semibold text-body-sm rounded-xl transition-colors cursor-pointer"
+                disabled={!canExecute}
+                className="flex-1 py-3 bg-rose-600 hover:bg-rose-700 text-white font-semibold text-body-sm rounded-xl transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:ring-offset-2"
               >
                 Approve &amp; Execute
               </button>
@@ -281,5 +322,12 @@ const Row: React.FC<{ label: string; children: React.ReactNode }> = ({
   <div className="flex justify-between items-center gap-3">
     <span className="text-slate-500 font-normal shrink-0">{label}:</span>
     {children}
+  </div>
+);
+
+const Detail: React.FC<{ label: string; value: string }> = ({ label, value }) => (
+  <div>
+    <dt className="text-slate-500">{label}</dt>
+    <dd className="mt-0.5 font-mono font-semibold text-slate-900">{value}</dd>
   </div>
 );

@@ -29,6 +29,7 @@ export const ProposedActionCard: React.FC<ProposedActionCardProps> = ({
   isRejecting,
 }) => {
   const isSettled = TERMINAL_STATUSES.includes(view.status);
+  const dependentTables = new Set(view.dependencies.map((item) => item.table)).size;
 
   return (
     <div className="bg-white rounded-2xl border-2 border-rose-200 p-5 sm:p-6 shadow-sm flex flex-col justify-between">
@@ -43,7 +44,7 @@ export const ProposedActionCard: React.FC<ProposedActionCardProps> = ({
                 Proposed Destructive Action
               </h3>
               <p className="text-caption text-rose-600 font-medium">
-                Intercepted &amp; measured by BlastShield · {view.status}
+                Measured evidence · {view.status.replaceAll('_', ' ')}
               </p>
             </div>
           </div>
@@ -58,7 +59,9 @@ export const ProposedActionCard: React.FC<ProposedActionCardProps> = ({
         <div className="my-3 p-3.5 bg-slate-950 rounded-xl font-mono text-caption text-rose-300 overflow-x-auto border border-slate-900">
           <div className="text-badge text-slate-400 uppercase font-semibold mb-1 flex items-center justify-between gap-3">
             <span>Intercepted SQL:</span>
-            <span className="text-rose-400 shrink-0">Blocked from Prod</span>
+            <span className="text-amber-300 shrink-0">
+              {view.status === 'EXECUTED' ? 'Executed' : 'Not executed'}
+            </span>
           </div>
           <code className="leading-relaxed whitespace-pre-wrap break-all">{view.sql}</code>
         </div>
@@ -75,15 +78,22 @@ export const ProposedActionCard: React.FC<ProposedActionCardProps> = ({
           <div className="p-3 bg-rose-50 rounded-xl border border-rose-200 flex items-center justify-between gap-3">
             <div>
               <span className="text-body-sm text-rose-800 font-semibold block">
-                Cascading Deletions:
+                Dependent Row Impact:
               </span>
               <span className="text-caption text-slate-500 font-normal">
-                {view.dependencies.length} dependent{' '}
-                {view.dependencies.length === 1 ? 'path' : 'paths'} via ON DELETE CASCADE
+                {view.dependencies.length} measured {view.dependencies.length === 1 ? 'path' : 'paths'} across{' '}
+                {dependentTables} {dependentTables === 1 ? 'table' : 'tables'}
               </span>
             </div>
             <span className="text-h4 font-bold text-rose-700 font-mono tracking-tight shrink-0">
               {formatNumber(view.dependentRows)} rows
+            </span>
+          </div>
+
+          <div className="p-3 bg-slate-950 text-white rounded-xl border border-slate-900 flex items-center justify-between gap-3">
+            <span className="text-body-sm text-slate-300 font-medium">Total Potential Impact:</span>
+            <span className="text-h4 font-bold font-mono tracking-tight">
+              {formatNumber(view.totalRows)} rows
             </span>
           </div>
 
@@ -101,7 +111,7 @@ export const ProposedActionCard: React.FC<ProposedActionCardProps> = ({
                   <span className="font-mono font-semibold text-slate-900 shrink-0">
                     {formatNumber(dependency.rows)}
                     <span className="text-slate-400 font-normal ml-1">
-                      {dependency.measurement === 'ESTIMATED' ? '~est' : 'exact'}
+                      {dependency.measurement === 'ESTIMATED' ? '~est' : 'exact'} · {dependency.on_delete}
                     </span>
                   </span>
                 </div>
@@ -131,23 +141,28 @@ export const ProposedActionCard: React.FC<ProposedActionCardProps> = ({
         </div>
       </div>
 
-      <div className="mt-5 pt-4 border-t border-slate-100 flex flex-col sm:flex-row gap-2.5">
+      <div className="mt-5 space-y-3 border-t border-slate-100 pt-4">
+        <p className="text-caption text-slate-500">
+          TrueForge path: return to the agent to approve or deny the destructive execution tool. Dashboard execution is a separate review path.
+        </p>
+        <div className="flex flex-col gap-2.5 sm:flex-row">
         <button
           onClick={onExecute}
           disabled={isSettled}
-          className="flex-1 py-3 bg-rose-600 hover:bg-rose-700 text-white font-semibold text-body-sm rounded-xl transition-all shadow-sm flex items-center justify-center gap-2 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+          className="flex-1 py-3 bg-rose-600 hover:bg-rose-700 text-white font-semibold text-body-sm rounded-xl transition-all shadow-sm flex items-center justify-center gap-2 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:ring-offset-2"
         >
           <AlertTriangle className="w-4 h-4" />
-          <span>Dashboard Review &amp; Execute</span>
+          <span>Review execution path</span>
         </button>
         <button
           onClick={onReject}
           disabled={isSettled || isRejecting}
-          className="py-3 px-4 bg-white hover:bg-slate-50 text-slate-700 font-semibold text-body-sm rounded-xl border border-slate-300 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+          className="py-3 px-4 bg-white hover:bg-slate-50 text-slate-700 font-semibold text-body-sm rounded-xl border border-slate-300 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500 focus-visible:ring-offset-2"
         >
           <Ban className="w-4 h-4" />
-          <span>{isRejecting ? 'Rejecting...' : 'Reject'}</span>
+          <span>{isRejecting ? 'Rejecting...' : 'Reject analysis'}</span>
         </button>
+        </div>
       </div>
     </div>
   );

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Database, Key, Link2 } from 'lucide-react';
 import { TableSchema, TableImpactInfo } from '../../types';
 import { ER_NODE_POSITIONS, ER_RELATIONSHIPS } from '../../constants/erLayout';
@@ -21,8 +21,6 @@ export const SchemaERDiagram: React.FC<SchemaERDiagramProps> = ({
   onSelectTable,
   isSaferMode = false,
 }) => {
-  const [hoveredTable, setHoveredTable] = useState<string | null>(null);
-
   return (
     <div className="w-full bg-slate-50/70 rounded-2xl border border-slate-200 p-4 relative overflow-x-auto shadow-inner">
       <div className="min-w-[980px] h-[580px] relative select-none">
@@ -173,8 +171,6 @@ export const SchemaERDiagram: React.FC<SchemaERDiagramProps> = ({
                 width: `${pos.w}px`,
               }}
               onClick={() => onSelectTable(tblName)}
-              onMouseEnter={() => setHoveredTable(tblName)}
-              onMouseLeave={() => setHoveredTable(null)}
               className={`absolute z-20 bg-white rounded-xl border transition-all cursor-pointer shadow-sm overflow-hidden flex flex-col ${borderStyle}`}
             >
               {/* Card Header: Table Name + Row Count */}

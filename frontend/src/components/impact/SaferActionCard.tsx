@@ -8,7 +8,6 @@ import {
   Check,
   Info,
   ShieldOff,
-  Eye,
   EyeOff,
   Sparkles,
 } from 'lucide-react';
@@ -75,30 +74,32 @@ export const SaferActionCard: React.FC<SaferActionCardProps> = ({
             </div>
             <div>
               <h3 className="text-body-sm font-bold text-slate-900 uppercase tracking-wider">
-                BlastShield Safer Alternative
+                Suggested Safer Alternative
               </h3>
               <p className="text-caption text-emerald-600 font-medium">
-                Soft-delete alternative · Avoids FK DELETE cascades
+                Projected soft-delete path · not executed by BlastShield
               </p>
             </div>
           </div>
 
-          <span className="px-2.5 py-1 rounded-lg text-caption font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 shrink-0">
-            Risk {safer.riskScore} / 100 ({safer.riskLevel})
-          </span>
+          {safer.riskScore !== null && safer.riskLevel !== null && (
+            <span className="px-2.5 py-1 rounded-lg text-caption font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 shrink-0">
+              Projected risk {safer.riskScore} / 100 ({safer.riskLevel})
+            </span>
+          )}
         </div>
 
         <div className="my-3 p-3.5 bg-slate-950 rounded-xl font-mono text-caption text-emerald-300 overflow-x-auto border border-slate-900">
           <div className="text-badge text-slate-400 uppercase font-semibold mb-1 flex items-center justify-between gap-3">
-            <span>Recommended Safe SQL:</span>
-            <span className="text-emerald-400 shrink-0">Non-Destructive Update</span>
+            <span>Suggested SQL:</span>
+            <span className="text-emerald-400 shrink-0">Projected UPDATE</span>
           </div>
           <code className="leading-relaxed whitespace-pre-wrap break-all">{safer.sql}</code>
         </div>
 
         <div className="space-y-2.5 mt-4">
           <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between gap-3">
-            <span className="text-body-sm text-slate-600 font-normal">Rows Marked Deleted:</span>
+            <span className="text-body-sm text-slate-600 font-normal">Projected Rows Marked:</span>
             <span className="text-h4 font-bold text-slate-900 font-mono tracking-tight">
               {formatNumber(view.directRows)}{' '}
               <span className="text-caption font-medium text-emerald-600">(Soft-Deleted)</span>
@@ -123,13 +124,15 @@ export const SaferActionCard: React.FC<SaferActionCardProps> = ({
             <span className="text-emerald-900 font-semibold block text-badge uppercase tracking-wider">
               Projected Database Effect:
             </span>
+            {safer.riskScore !== null && safer.riskLevel !== null && (
+              <Guarantee>
+                Projected risk changes from <strong>{view.riskScore} {view.riskLevel}</strong> to{' '}
+                <strong className="text-emerald-700">{safer.riskScore} {safer.riskLevel}</strong>
+              </Guarantee>
+            )}
             <Guarantee>
-              Drops risk score from <strong>{view.riskScore} {view.riskLevel}</strong> ➔{' '}
-              <strong className="text-emerald-700">{safer.riskScore} {safer.riskLevel}</strong>
-            </Guarantee>
-            <Guarantee>
-              {formatNumber(savedRows)} dependent rows are not targeted across{' '}
-              {view.dependencies.length} dependent {view.dependencies.length === 1 ? 'table' : 'tables'}
+              {formatNumber(savedRows)} dependent rows are not directly targeted by this UPDATE across{' '}
+              {new Set(view.dependencies.map((item) => item.table)).size} dependent tables
             </Guarantee>
             <Guarantee>
               The soft-delete flag can be cleared; application-level behavior is not verified
@@ -157,7 +160,7 @@ export const SaferActionCard: React.FC<SaferActionCardProps> = ({
               ) : (
                 <>
                   <Sparkles className="w-4 h-4 text-amber-300" />
-                  <span>Preview Safeguard Effect</span>
+                  <span>Preview projected effect</span>
                 </>
               )}
             </button>
@@ -168,14 +171,14 @@ export const SaferActionCard: React.FC<SaferActionCardProps> = ({
             className="py-3 px-5 bg-white hover:bg-slate-50 text-slate-700 font-semibold text-body-sm rounded-xl border border-slate-300 transition-all flex items-center justify-center gap-2 cursor-pointer"
           >
             {copied ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
-            <span>{copied ? 'Copied!' : 'Copy Safe SQL'}</span>
+            <span>{copied ? 'Copied!' : 'Copy suggested SQL'}</span>
           </button>
         </div>
 
         <p className="text-caption text-slate-500 font-normal flex items-start gap-1.5">
           <Info className="w-3.5 h-3.5 shrink-0 mt-0.5 text-slate-400" />
           <span>
-            Projection uses PostgreSQL row counts and FK metadata. Triggers and application-level cascades are outside the current analysis.
+            Projection uses PostgreSQL row counts and foreign-key metadata. Triggers and application-level behavior are outside the current analysis. BlastShield does not execute this UPDATE automatically.
           </span>
         </p>
       </div>

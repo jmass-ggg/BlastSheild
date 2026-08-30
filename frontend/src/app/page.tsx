@@ -1,17 +1,19 @@
 'use client';
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Bot, X } from 'lucide-react';
 import { Header } from '../components/layout/Header';
+import { AnalysisSummary } from '../components/dashboard/AnalysisSummary';
+import { EmptyState } from '../components/dashboard/EmptyState';
 import { PromptSection } from '../components/prompt/PromptSection';
 import { ImpactComparison } from '../components/impact/ImpactComparison';
 import { SchemaSection } from '../components/schema/SchemaSection';
 import { ExecutionModal } from '../components/execution/ExecutionModal';
 import { ActionTimeline } from '../components/timeline/ActionTimeline';
-import { DATABASE_SCHEMA } from '../constants/databaseSchema';
 import { DEFAULT_SQL, PRESET_QUERIES } from '../constants/presetQueries';
-import { ApiError, analyze, listAnalyses, rejectAnalysis } from '../lib/apiClient';
+import { ApiError, analyze, healthCheck, listAnalyses, rejectAnalysis } from '../lib/apiClient';
 import { adaptAnalysis } from '../lib/adaptAnalysis';
-import { AnalysisView } from '../types';
+import { AnalysisView, ConnectionState, ReportOrigin, TableSchema } from '../types';
 
 export default function Home() {
   const [sql, setSql] = useState<string>(DEFAULT_SQL);
@@ -27,8 +29,52 @@ export default function Home() {
   const [isExecuteOpen, setIsExecuteOpen] = useState(false);
   const [isRejecting, setIsRejecting] = useState(false);
   const [isSaferPreview, setIsSaferPreview] = useState(false);
+  const [backendStatus, setBackendStatus] = useState<ConnectionState>('checking');
+  const [mcpStatus, setMcpStatus] = useState<ConnectionState>('checking');
+  const [origin, setOrigin] = useState<ReportOrigin | null>(null);
+  const [receivedAt, setReceivedAt] = useState<Date>(new Date());
+  const [showNewReportNotice, setShowNewReportNotice] = useState(false);
   const latestReportKey = useRef<string | null>(null);
   const hasEstablishedReportBaseline = useRef(false);
+  const reportRef = useRef<HTMLDivElement | null>(null);
+  const noticeTimerRef = useRef<number | null>(null);
+
+  const visibleTables = useMemo(() => {
+    if (!view?.graph.nodes.length) return {};
+    const tables: Record<string, TableSchema> = {};
+    for (const node of view.graph.nodes) {
+      tables[node.table] = {
+        name: node.table,
+        rowCount: 0,
+        description: 'Discovered by the live foreign-key analysis. Column metadata is not included in this report.',
+        columns: [],
+      };
+    }
+    return tables;
+  }, [view]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const checkConnections = async () => {
+      const [backend, mcp] = await Promise.allSettled([
+        healthCheck(),
+        fetch('/api/mcp-health', { cache: 'no-store' }),
+      ]);
+      if (cancelled) return;
+      setBackendStatus(backend.status === 'fulfilled' ? 'online' : 'offline');
+      setMcpStatus(
+        mcp.status === 'fulfilled' && mcp.value.ok ? 'online' : 'offline'
+      );
+    };
+
+    void checkConnections();
+    const timer = window.setInterval(() => void checkConnections(), 15000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, []);
 
   // Keep the dashboard synchronized with analyses created by TrueForge/MCP.
   // The backend remains authoritative; the browser never recomputes evidence.
@@ -60,6 +106,12 @@ export default function Home() {
         const adapted = adaptAnalysis(latest, latest.sql ?? DEFAULT_SQL);
         setSelectedTable(adapted.targetTable);
         setView(adapted);
+        setOrigin('TRUEFORGE_MCP');
+        setReceivedAt(new Date());
+        setShowNewReportNotice(true);
+        if (noticeTimerRef.current) window.clearTimeout(noticeTimerRef.current);
+        noticeTimerRef.current = window.setTimeout(() => setShowNewReportNotice(false), 6000);
+        window.setTimeout(() => reportRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
       } catch {
         // The prompt owns user-facing connection errors. Background sync is best effort.
       }
@@ -70,6 +122,7 @@ export default function Home() {
     return () => {
       cancelled = true;
       window.clearInterval(timer);
+      if (noticeTimerRef.current) window.clearTimeout(noticeTimerRef.current);
     };
   }, [isAnalyzing]);
 
@@ -86,8 +139,9 @@ export default function Home() {
       latestReportKey.current = `${report.analysis_id}:${report.status}`;
       setView(adapted);
       setSelectedTable(adapted.targetTable);
+      setOrigin('DASHBOARD');
+      setReceivedAt(new Date());
     } catch (caught) {
-      setView(null);
       setAnalyzeError(
         caught instanceof ApiError
           ? `${caught.code}: ${caught.message}`
@@ -103,7 +157,6 @@ export default function Home() {
     if (!preset) return;
     setActivePresetKey(preset.key);
     setSql(preset.sql);
-    void runAnalysis(preset.sql);
   };
 
   const handleChangeSql = (value: string) => {
@@ -117,6 +170,7 @@ export default function Home() {
     try {
       const transition = await rejectAnalysis(view.analysisId, { actor: 'ui' });
       setView({ ...view, status: transition.status });
+      latestReportKey.current = `${view.analysisId}:${transition.status}`;
     } catch (caught) {
       setAnalyzeError(
         caught instanceof ApiError
@@ -129,26 +183,46 @@ export default function Home() {
   };
 
   const handleStatusChange = useCallback((status: string) => {
-    setView((current) => (current ? { ...current, status } : current));
+    setView((current) => {
+      if (!current) return current;
+      latestReportKey.current = `${current.analysisId}:${status}`;
+      return { ...current, status };
+    });
   }, []);
 
   return (
     <div className="min-h-screen bg-[#f8fafc] text-slate-900 flex flex-col font-sans">
-      <Header />
+      <Header backendStatus={backendStatus} mcpStatus={mcpStatus} origin={origin} />
 
-      <main className="max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 space-y-6 flex-1">
-        {/* 1. SQL Entry & Presets */}
-        <PromptSection
-          sql={sql}
-          onChangeSql={handleChangeSql}
-          onSubmit={() => void runAnalysis(sql)}
-          isAnalyzing={isAnalyzing}
-          onSelectPreset={handleSelectPreset}
-          activePresetKey={activePresetKey}
-          error={analyzeError}
-        />
+      <main className="mx-auto w-full max-w-[1440px] flex-1 space-y-6 px-4 py-6 sm:px-6 lg:py-8">
+        {showNewReportNotice && (
+          <div
+            role="status"
+            className="flex items-center justify-between gap-3 rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900 shadow-sm"
+          >
+            <span className="flex items-center gap-2 font-medium">
+              <Bot className="h-4 w-4 text-sky-600" />
+              New analysis received from TrueForge through the BlastShield MCP connector.
+            </span>
+            <button
+              type="button"
+              onClick={() => setShowNewReportNotice(false)}
+              className="rounded-lg p-1 text-sky-700 hover:bg-sky-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
+              aria-label="Dismiss notification"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        )}
 
-        {/* Live Staged Progress (During Analysis) or Gateway Action Feed */}
+        {view ? (
+          <div ref={reportRef} className="scroll-mt-24">
+            <AnalysisSummary view={view} origin={origin ?? 'DASHBOARD'} receivedAt={receivedAt} />
+          </div>
+        ) : (
+          <EmptyState backendStatus={backendStatus} mcpStatus={mcpStatus} />
+        )}
+
         {(isAnalyzing || view) && (
           <ActionTimeline
             isAnalyzing={isAnalyzing}
@@ -158,7 +232,7 @@ export default function Home() {
         )}
 
         {/* 2. Risk Gauge & Action Comparison */}
-        {view ? (
+        {view && (
           <ImpactComparison
             view={view}
             onExecute={() => setIsExecuteOpen(true)}
@@ -167,19 +241,29 @@ export default function Home() {
             isSaferPreview={isSaferPreview}
             onToggleSaferPreview={() => setIsSaferPreview((prev) => !prev)}
           />
-        ) : (
-          !isAnalyzing && <EmptyState />
         )}
 
-        {/* 3. Interactive Blast Radius Graph & Schema Explorer */}
-        <SchemaSection
-          tables={DATABASE_SCHEMA}
-          affectedMap={view?.affectedTableMap ?? {}}
-          selectedTable={selectedTable}
-          onSelectTable={setSelectedTable}
-          graph={view?.graph}
-          isSaferMode={isSaferPreview}
-          targetTable={view?.targetTable}
+        {view && (
+          <SchemaSection
+            tables={visibleTables}
+            affectedMap={view.affectedTableMap}
+            selectedTable={selectedTable}
+            onSelectTable={setSelectedTable}
+            graph={view.graph}
+            dependencies={view.dependencies}
+            isSaferMode={isSaferPreview}
+            targetTable={view.targetTable}
+          />
+        )}
+
+        <PromptSection
+          sql={sql}
+          onChangeSql={handleChangeSql}
+          onSubmit={() => void runAnalysis(sql)}
+          isAnalyzing={isAnalyzing}
+          onSelectPreset={handleSelectPreset}
+          activePresetKey={activePresetKey}
+          error={analyzeError}
         />
       </main>
 
@@ -194,11 +278,3 @@ export default function Home() {
     </div>
   );
 }
-
-const EmptyState: React.FC = () => (
-  <section className="bg-white rounded-2xl border border-dashed border-slate-300 p-10 text-center">
-    <p className="text-body-sm text-slate-500 font-normal">
-      Run an impact analysis above to inspect the blast-radius dependency graph and simulated safety alternatives.
-    </p>
-  </section>
-);

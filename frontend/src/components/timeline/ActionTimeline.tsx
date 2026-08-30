@@ -1,15 +1,14 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import {
-  CheckCircle2,
-  Circle,
-  Loader2,
-  Clock,
-  ShieldAlert,
-  ShieldCheck,
+  AlertTriangle,
   Ban,
   Check,
+  Clock3,
+  Loader2,
+  RefreshCw,
+  XCircle,
 } from 'lucide-react';
 import { TimelineItem } from '../../types/api';
 
@@ -19,204 +18,157 @@ interface ActionTimelineProps {
   status?: string;
 }
 
-const STAGED_ANALYSIS_STEPS = [
-  { key: 'intercepted', label: 'SQL statement intercepted & verified', delay: 100 },
-  { key: 'parsed', label: 'AST parsed & target table detected', delay: 250 },
-  { key: 'graph', label: 'Foreign-key dependency graph traversed', delay: 450 },
-  { key: 'impact', label: 'Blast radius & cascade rows measured', delay: 700 },
-  { key: 'risk', label: 'Deterministic risk factors scored', delay: 900 },
-  { key: 'alternative', label: 'Safer alternative synthesized', delay: 1100 },
-];
+type RenderState = 'complete' | 'current' | 'pending' | 'rejected' | 'failed' | 'stale';
+
+interface RenderItem {
+  key: string;
+  label: string;
+  state: RenderState;
+}
+
+const STATE_STYLE: Record<RenderState, string> = {
+  complete: 'border-emerald-200 bg-emerald-50 text-emerald-800',
+  current: 'border-blue-200 bg-blue-50 text-blue-900',
+  pending: 'border-slate-200 bg-slate-50 text-slate-500',
+  rejected: 'border-slate-300 bg-slate-100 text-slate-700',
+  failed: 'border-rose-200 bg-rose-50 text-rose-800',
+  stale: 'border-amber-300 bg-amber-50 text-amber-900',
+};
+
+const STATUS_EXPLANATION: Record<string, string> = {
+  PENDING_APPROVAL: 'Analysis is complete. No domain rows have changed; a human decision is required.',
+  APPROVED: 'Human approval is recorded. The stored SQL must still pass live revalidation before execution.',
+  EXECUTING: 'BlastShield is revalidating the stored evidence and executing in an isolated transaction.',
+  EXECUTED: 'Revalidation passed and the stored statement completed.',
+  REJECTED: 'The action was rejected and cannot be executed.',
+  STALE: 'The database changed after analysis. Nothing was executed; create a fresh report.',
+  FAILED: 'The lifecycle stopped because an operation failed. Review the reported error before retrying.',
+};
 
 export const ActionTimeline: React.FC<ActionTimelineProps> = ({
   isAnalyzing,
   timeline = [],
-  status,
+  status = 'PENDING_APPROVAL',
 }) => {
-  const [activeSimIndex, setActiveSimIndex] = useState(0);
-
-  // When analyzing starts, step through stages
-  useEffect(() => {
-    if (!isAnalyzing) {
-      setActiveSimIndex(0);
-      return;
-    }
-
-    const timers = STAGED_ANALYSIS_STEPS.map((step, idx) => {
-      return setTimeout(() => {
-        setActiveSimIndex(idx);
-      }, step.delay);
-    });
-
-    return () => {
-      timers.forEach(clearTimeout);
-    };
-  }, [isAnalyzing]);
-
   if (isAnalyzing) {
     return (
-      <div className="bg-slate-900 text-slate-100 rounded-2xl border border-slate-800 p-5 shadow-lg space-y-3.5">
-        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-          <div className="flex items-center gap-2">
-            <Loader2 className="w-4 h-4 text-amber-400 animate-spin" />
-            <span className="text-body-sm font-bold text-white font-mono uppercase tracking-wider">
-              BlastShield Production Analysis Active
-            </span>
+      <section
+        aria-live="polite"
+        aria-label="Analysis progress"
+        className="rounded-2xl border border-slate-800 bg-slate-950 p-5 text-white shadow-sm"
+      >
+        <div className="flex items-start gap-3">
+          <Loader2 className="mt-0.5 h-5 w-5 shrink-0 animate-spin text-amber-300" />
+          <div>
+            <h2 className="text-sm font-semibold">Read-only analysis in progress</h2>
+            <p className="mt-1 text-sm text-slate-400">
+              Waiting for backend-authoritative SQL, row-impact, and foreign-key results. No stage is marked complete until the API confirms it.
+            </p>
           </div>
-          <span className="text-badge font-mono text-amber-400 bg-amber-950/80 border border-amber-800 px-2 py-0.5 rounded-full">
-            Read-only Live Measurement
-          </span>
         </div>
-
-        <div className="space-y-2 font-mono text-caption">
-          {STAGED_ANALYSIS_STEPS.map((step, idx) => {
-            const isDone = idx < activeSimIndex;
-            const isCurrent = idx === activeSimIndex;
-
-            return (
-              <div
-                key={step.key}
-                className={`flex items-center gap-2.5 transition-all duration-150 ${
-                  isDone
-                    ? 'text-emerald-400'
-                    : isCurrent
-                    ? 'text-amber-300 font-semibold'
-                    : 'text-slate-500'
-                }`}
-              >
-                {isDone ? (
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                ) : isCurrent ? (
-                  <Loader2 className="w-4 h-4 text-amber-400 animate-spin shrink-0" />
-                ) : (
-                  <Circle className="w-4 h-4 text-slate-700 shrink-0" />
-                )}
-                <span>{step.label}</span>
-              </div>
-            );
-          })}
-        </div>
-      </div>
+      </section>
     );
   }
 
-  // After analysis completes: show backend authoritative timeline
-  type RenderTimelineItem = {
-    key: string;
-    label: string;
-    status: 'complete' | 'current' | 'pending' | 'rejected';
-  };
+  const source: RenderItem[] = timeline.length
+    ? timeline.map((item) => ({
+        key: item.key,
+        label: item.label,
+        state: normalizeState(item.status),
+      }))
+    : [
+        { key: 'received', label: 'Received', state: 'complete' },
+        { key: 'validated', label: 'Validated', state: 'complete' },
+        { key: 'measured', label: 'Impact measured', state: 'complete' },
+        { key: 'approval', label: 'Waiting for approval', state: 'current' },
+      ];
 
-  const sourceItems: RenderTimelineItem[] =
-    timeline && timeline.length > 0
-      ? timeline.map((item) => ({
-          key: item.key,
-          label: item.label,
-          status: item.status as RenderTimelineItem['status'],
-        }))
-      : [
-          { key: 'intercepted', label: 'SQL intercepted', status: 'complete' },
-          { key: 'parsed', label: 'SQL parsed', status: 'complete' },
-          { key: 'measured', label: 'Impact measured', status: 'complete' },
-          { key: 'approval', label: 'Waiting for human approval', status: 'current' },
-        ];
-
-  // Persisted reports may already include status-specific steps. Normalize by
-  // key before applying the live status so React identity stays deterministic.
-  let items = sourceItems.filter(
-    (item, index, allItems) =>
-      allItems.findIndex((candidate) => candidate.key === item.key) === index
+  const items = source.filter(
+    (item, index, all) => all.findIndex((candidate) => candidate.key === item.key) === index
   );
 
-  const upsertItem = (nextItem: RenderTimelineItem) => {
-    const index = items.findIndex((item) => item.key === nextItem.key);
-    if (index >= 0) {
-      items[index] = nextItem;
-    } else {
-      items.push(nextItem);
-    }
+  const upsert = (next: RenderItem) => {
+    const index = items.findIndex((item) => item.key === next.key);
+    if (index >= 0) items[index] = next;
+    else items.push(next);
   };
 
-  // If status indicates transition
   if (status === 'APPROVED') {
-    upsertItem({
-      key: 'approval',
-      label: 'Approved by human operator',
-      status: 'complete',
-    });
-    upsertItem({
-      key: 'ready_execute',
-      label: 'Ready for execution & revalidation',
-      status: 'current',
-    });
+    upsert({ key: 'approval', label: 'Human approval recorded', state: 'complete' });
+    upsert({ key: 'revalidation', label: 'Ready for revalidation', state: 'current' });
+  } else if (status === 'EXECUTING') {
+    upsert({ key: 'approval', label: 'Human approval recorded', state: 'complete' });
+    upsert({ key: 'revalidation', label: 'Revalidating live state', state: 'current' });
+    upsert({ key: 'execution', label: 'Execution pending', state: 'pending' });
   } else if (status === 'EXECUTED') {
-    upsertItem({
-      key: 'approval',
-      label: 'Approved by human operator',
-      status: 'complete',
-    });
-    items = items.filter(
-      (item) => !['ready_execute', 'revalidated', 'execution', 'executed'].includes(item.key)
-    );
-    items.push({
-      key: 'revalidated',
-      label: 'Revalidated against live database',
-      status: 'complete',
-    });
-    items.push({
-      key: 'execution',
-      label: 'Executed in isolated transaction',
-      status: 'complete',
-    });
+    upsert({ key: 'approval', label: 'Human approval recorded', state: 'complete' });
+    upsert({ key: 'revalidation', label: 'Live state revalidated', state: 'complete' });
+    upsert({ key: 'execution', label: 'Executed in isolated transaction', state: 'complete' });
   } else if (status === 'REJECTED') {
-    upsertItem({
-      key: 'approval',
-      label: 'Human operator rejected action',
-      status: 'rejected',
-    });
+    upsert({ key: 'approval', label: 'Action rejected by human', state: 'rejected' });
+  } else if (status === 'STALE') {
+    upsert({ key: 'approval', label: 'Human approval recorded', state: 'complete' });
+    upsert({ key: 'revalidation', label: 'Analysis became stale', state: 'stale' });
+  } else if (status === 'FAILED') {
+    upsert({ key: 'failure', label: 'Lifecycle failed', state: 'failed' });
   }
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-2xs space-y-2.5">
-      <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-        <div className="flex items-center gap-1.5 text-badge font-bold text-slate-700 uppercase tracking-wider font-mono">
-          <Clock className="w-3.5 h-3.5 text-blue-600" />
-          <span>Gateway Action Timeline</span>
+    <section aria-labelledby="lifecycle-title" className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="flex flex-col gap-2 border-b border-slate-100 pb-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 id="lifecycle-title" className="flex items-center gap-2 text-sm font-semibold text-slate-900">
+            <Clock3 className="h-4 w-4 text-sky-600" />
+            Action lifecycle
+          </h2>
+          <p className="mt-1 text-xs text-slate-500">Backend-authoritative state; analysis and execution remain separate.</p>
         </div>
-        <span className="text-badge font-mono text-slate-500">
-          Status: <strong className="font-semibold text-slate-800">{status || 'PENDING_APPROVAL'}</strong>
+        <span className="w-fit rounded-full border border-slate-200 bg-slate-50 px-3 py-1 font-mono text-xs font-semibold text-slate-700">
+          {status.replaceAll('_', ' ')}
         </span>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 pt-1 font-mono text-caption">
-        {items.map((item, idx) => {
-          const isComplete = item.status === 'complete';
-          const isCurrent = item.status === 'current';
-          const isRejected = item.status === 'rejected';
+      <ol className="mt-4 flex flex-col gap-2 lg:flex-row" aria-label="Analysis lifecycle stages">
+        {items.map((item, index) => (
+          <li key={item.key} className="flex min-w-0 flex-1 items-center gap-2">
+            {index > 0 && <span aria-hidden="true" className="hidden text-slate-300 lg:block">→</span>}
+            <div className={`flex w-full items-center gap-2 rounded-xl border px-3 py-2.5 text-xs font-semibold ${STATE_STYLE[item.state]}`}>
+              <StateIcon state={item.state} />
+              <span className="truncate" title={item.label}>{item.label}</span>
+            </div>
+          </li>
+        ))}
+      </ol>
 
-          return (
-            <React.Fragment key={item.key}>
-              {idx > 0 && <span className="text-slate-300">➔</span>}
-              <div
-                className={`flex items-center gap-1.5 px-2 py-1 rounded-md text-badge ${
-                  isComplete
-                    ? 'bg-emerald-50 text-emerald-800 border border-emerald-200 font-medium'
-                    : isCurrent
-                    ? 'bg-amber-50 text-amber-900 border border-amber-300 font-bold'
-                    : isRejected
-                    ? 'bg-rose-50 text-rose-800 border border-rose-200 font-bold'
-                    : 'bg-slate-50 text-slate-500 border border-slate-200'
-                }`}
-              >
-                {isComplete && <Check className="w-3 h-3 text-emerald-600 shrink-0" />}
-                {isCurrent && <Clock className="w-3 h-3 text-amber-600 shrink-0 animate-pulse" />}
-                {isRejected && <Ban className="w-3 h-3 text-rose-600 shrink-0" />}
-                <span>{item.label}</span>
-              </div>
-            </React.Fragment>
-          );
-        })}
+      <div className="mt-3 flex items-start gap-2 text-sm text-slate-600">
+        {status === 'STALE' ? (
+          <RefreshCw className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+        ) : status === 'FAILED' ? (
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-rose-600" />
+        ) : (
+          <Clock3 className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
+        )}
+        <p>{STATUS_EXPLANATION[status] ?? 'BlastShield is waiting for the next lifecycle transition.'}</p>
       </div>
-    </div>
+    </section>
   );
+};
+
+function normalizeState(value: string): RenderState {
+  const normalized = value.toLowerCase();
+  if (normalized === 'complete') return 'complete';
+  if (normalized === 'current') return 'current';
+  if (normalized === 'rejected') return 'rejected';
+  if (normalized === 'failed') return 'failed';
+  if (normalized === 'stale') return 'stale';
+  return 'pending';
+}
+
+const StateIcon: React.FC<{ state: RenderState }> = ({ state }) => {
+  if (state === 'complete') return <Check className="h-3.5 w-3.5 shrink-0" />;
+  if (state === 'current') return <Clock3 className="h-3.5 w-3.5 shrink-0" />;
+  if (state === 'rejected') return <Ban className="h-3.5 w-3.5 shrink-0" />;
+  if (state === 'failed') return <XCircle className="h-3.5 w-3.5 shrink-0" />;
+  if (state === 'stale') return <RefreshCw className="h-3.5 w-3.5 shrink-0" />;
+  return <span className="h-2 w-2 shrink-0 rounded-full bg-current opacity-40" />;
 };

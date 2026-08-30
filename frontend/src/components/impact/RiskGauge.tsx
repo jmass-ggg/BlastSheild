@@ -128,6 +128,13 @@ export const RiskGauge: React.FC<RiskGaugeProps> = ({
     originalScore !== undefined && isSaferMode
       ? originalScore - score
       : 0;
+  const breakdownTotal = breakdown
+    ? breakdown.operation +
+      breakdown.direct_impact +
+      breakdown.dependent_impact +
+      breakdown.cascade +
+      breakdown.recoverability
+    : null;
 
   return (
     <div
@@ -240,17 +247,30 @@ export const RiskGauge: React.FC<RiskGaugeProps> = ({
         {breakdown && (
           <div className="w-full sm:w-64 space-y-1.5 text-caption font-mono bg-slate-50 p-3 rounded-xl border border-slate-200/80">
             <div className="text-badge font-bold text-slate-500 uppercase tracking-wider flex items-center justify-between border-b border-slate-200 pb-1 mb-1">
-              <span>Risk Factor Vectors</span>
-              <span>Weight</span>
+              <span>Deterministic policy factors</span>
+              <span>{breakdownTotal} pts</span>
             </div>
-            <FactorBar label="Op Weight" value={breakdown.operation} max={25} isSafer={isSaferMode} />
-            <FactorBar label="Direct Impact" value={breakdown.direct_impact} max={20} isSafer={isSaferMode} />
-            <FactorBar label="Dependent Rows" value={breakdown.dependent_impact} max={20} isSafer={isSaferMode} />
-            <FactorBar label="FK Cascade" value={breakdown.cascade} max={25} isSafer={isSaferMode} />
-            <FactorBar label="Recoverability" value={breakdown.recoverability} max={10} isSafer={isSaferMode} />
+            <FactorBar label="Operation type" value={breakdown.operation} max={25} isSafer={isSaferMode} description="Weight assigned to the proposed database operation." />
+            <FactorBar label="Direct impact" value={breakdown.direct_impact} max={20} isSafer={isSaferMode} description="Rows matching the target DELETE condition." />
+            <FactorBar label="Dependent rows" value={breakdown.dependent_impact} max={20} isSafer={isSaferMode} description="Rows correlated through measured foreign-key paths." />
+            <FactorBar label="FK cascade" value={breakdown.cascade} max={25} isSafer={isSaferMode} description="Severity of propagating ON DELETE behavior." />
+            <FactorBar label="Recoverability" value={breakdown.recoverability} max={10} isSafer={isSaferMode} description="Difficulty of restoring data after a hard delete." />
           </div>
         )}
       </div>
+
+      {breakdown && (
+        <details className="mt-4 rounded-xl border border-slate-200 bg-slate-50">
+          <summary className="flex cursor-pointer list-none items-center gap-2 px-3.5 py-3 text-xs font-semibold text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500">
+            <Info className="h-3.5 w-3.5 text-sky-600" />
+            How is this score calculated?
+          </summary>
+          <div className="border-t border-slate-200 px-3.5 py-3 text-xs leading-5 text-slate-600">
+            The backend applies a fixed policy to operation type, matching rows, correlated dependent rows, foreign-key behavior, and recoverability. The displayed factor sum is{' '}
+            <strong className="font-mono text-slate-900">{breakdownTotal}</strong>; this is deterministic database evidence, not an AI prediction.
+          </div>
+        </details>
+      )}
 
       {isSaferMode && originalScore !== undefined && (
         <div className="mt-3 pt-3 border-t border-emerald-200/60 flex items-center justify-between text-caption font-mono text-emerald-900 bg-emerald-100/50 px-3 py-2 rounded-lg">
@@ -270,10 +290,11 @@ const FactorBar: React.FC<{
   value: number;
   max: number;
   isSafer: boolean;
-}> = ({ label, value, max, isSafer }) => {
+  description: string;
+}> = ({ label, value, max, isSafer, description }) => {
   const pct = Math.min(100, Math.round((value / max) * 100));
   return (
-    <div className="space-y-0.5">
+    <div className="space-y-0.5" title={description} aria-label={`${label}: ${value} points. ${description}`}>
       <div className="flex justify-between text-badge text-slate-600">
         <span>{label}</span>
         <span className="font-semibold text-slate-800">{value} pts</span>
