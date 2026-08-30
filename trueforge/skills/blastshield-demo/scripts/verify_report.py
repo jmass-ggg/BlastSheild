@@ -37,11 +37,44 @@ def object_at(report: dict[str, Any], key: str, failures: list[str]) -> dict[str
     return value
 
 
+def _expected_row_score(rows: float) -> float:
+    if rows <= 0:
+        return 0.0
+    if rows <= 10:
+        return 4.0
+    if rows <= 100:
+        return 8.0
+    if rows <= 1_000:
+        return 12.0
+    if rows <= 10_000:
+        return 16.0
+    return 20.0
+
+
+def _expected_cascade_score(dependencies: list[dict[str, Any]]) -> float:
+    if not dependencies:
+        return 0.0
+    if any(item.get("effect") == "BLOCK" for item in dependencies):
+        return 25.0
+    deletion_depths = [
+        int(item.get("depth", 1))
+        for item in dependencies
+        if item.get("effect") == "DELETE" and isinstance(item.get("depth"), (int, float))
+    ]
+    if deletion_depths:
+        maximum_depth = max(deletion_depths)
+        return 12.0 if maximum_depth == 1 else 18.0 if maximum_depth == 2 else 25.0
+    if any(item.get("effect") in {"SET_NULL", "SET_DEFAULT"} for item in dependencies):
+        return 8.0
+    return 0.0
+
+
 def verify(report: dict[str, Any]) -> dict[str, Any]:
     failures: list[str] = []
     impact = object_at(report, "impact", failures)
     risk = object_at(report, "risk", failures)
-    breakdown = object_at(risk, "breakdown", failures)
+    action = object_at(report, "action", failures)
+    safer = object_at(report, "safer_alternative", failures)
     dependencies = report.get("dependencies")
     if not isinstance(dependencies, list):
         failures.append("dependencies must be an array")
@@ -67,20 +100,48 @@ def verify(report: dict[str, Any]) -> dict[str, Any]:
     if dependent != dependency_sum:
         failures.append("dependent_rows does not equal the dependency row sum")
 
-    score = number(risk.get("score"), "risk.score", failures)
-    breakdown_sum = sum(
-        number(value, f"risk.breakdown.{key}", failures)
-        for key, value in breakdown.items()
+    # Independently compute expected risk components
+    operation = str(action.get("operation", "DELETE")).upper()
+    has_where = bool(action.get("has_where", True))
+    recoverable = bool(safer.get("available", False))
+
+    if operation == "DELETE" and not has_where:
+        expected_op_score = 25.0
+        expected_dir_score = 20.0
+        expected_dep_score = 20.0
+        expected_casc_score = 25.0
+        expected_recov_score = 10.0
+    else:
+        expected_op_score = 20.0 if operation == "DELETE" else 10.0
+        expected_dir_score = _expected_row_score(direct)
+        expected_dep_score = _expected_row_score(dependency_sum)
+        expected_casc_score = _expected_cascade_score(dependencies)
+        expected_recov_score = 2.0 if recoverable else 10.0
+
+    expected_score = min(
+        100.0,
+        expected_op_score
+        + expected_dir_score
+        + expected_dep_score
+        + expected_casc_score
+        + expected_recov_score,
     )
-    if score != min(100.0, breakdown_sum):
-        failures.append("risk score does not equal the capped breakdown sum")
+
+    score = number(risk.get("score"), "risk.score", failures)
+    if score != expected_score:
+        failures.append(
+            f"risk score ({score}) does not match independently derived policy score ({expected_score})"
+        )
 
     level = risk.get("level")
+    expected_level = expected_risk_level(int(expected_score))
     if not isinstance(level, str):
         failures.append("risk.level must be a string")
         level = "UNKNOWN"
-    elif score.is_integer() and level != expected_risk_level(int(score)):
-        failures.append("risk level does not match the deterministic score band")
+    elif level != expected_level:
+        failures.append(
+            f"risk level ({level}) does not match derived policy level ({expected_level})"
+        )
 
     if not report.get("analysis_id"):
         failures.append("analysis_id is required")
@@ -90,13 +151,13 @@ def verify(report: dict[str, Any]) -> dict[str, Any]:
         failures.append("requires_approval must be true before execution")
 
     passed = not failures
-    recommendation = "REJECT" if level in {"HIGH", "CRITICAL"} else "REVIEW"
+    recommendation = "REJECT" if expected_level in {"HIGH", "CRITICAL"} else "REVIEW"
     return {
         "verification": "PASSED" if passed else "FAILED",
         "checks": {
             "total_rows": int(total),
             "dependency_sum": int(dependency_sum),
-            "risk_breakdown_sum": int(breakdown_sum),
+            "derived_score": int(expected_score),
             "risk_score": int(score),
             "risk_level": level,
         },

@@ -38,7 +38,7 @@ export function adaptAnalysis(
     status: report.status,
     requiresApproval: report.requires_approval,
 
-    sql: report.sql ?? submittedSql,
+    sql: submittedSql,
     operation: report.action.operation,
     targetTable: report.action.table,
     hasWhere: report.action.has_where,

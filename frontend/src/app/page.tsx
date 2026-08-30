@@ -76,17 +76,26 @@ export default function Home() {
     };
   }, []);
 
+  const isExecuteOpenRef = useRef(isExecuteOpen);
+  isExecuteOpenRef.current = isExecuteOpen;
+  const isRejectingRef = useRef(isRejecting);
+  isRejectingRef.current = isRejecting;
+  const viewRef = useRef(view);
+  viewRef.current = view;
+
   // Keep the dashboard synchronized with analyses created by TrueForge/MCP.
   // The backend remains authoritative; the browser never recomputes evidence.
   useEffect(() => {
     let cancelled = false;
+    let pollSeq = 0;
 
     const syncLatestReport = async () => {
-      if (isAnalyzing) return;
+      if (isAnalyzing || isExecuteOpenRef.current || isRejectingRef.current) return;
+      const currentSeq = ++pollSeq;
       try {
         const reports = await listAnalyses(1);
         const latest = reports[0];
-        if (cancelled) return;
+        if (cancelled || currentSeq !== pollSeq) return;
 
         // Reports are persisted across restarts. Treat the newest report at page
         // load as history so a fresh dashboard does not look pre-populated, while
@@ -102,8 +111,28 @@ export default function Home() {
         if (!latest) return;
         const reportKey = `${latest.analysis_id}:${latest.status}`;
         if (latestReportKey.current === reportKey) return;
+
+        // If the user has the modal open or is actively reviewing an analysis,
+        // do not swap the execution target out from under them.
+        const currentView = viewRef.current;
+        if (currentView && currentView.analysisId === latest.analysis_id) {
+          const terminalStatuses = ['APPROVED', 'EXECUTED', 'REJECTED', 'STALE'];
+          // Prevent out-of-order race from reverting an approved or terminal state back to pending
+          if (terminalStatuses.includes(currentView.status) && latest.status === 'PENDING_APPROVAL') {
+            return;
+          }
+          latestReportKey.current = reportKey;
+          setView((prev) => (prev ? { ...prev, status: latest.status } : null));
+          return;
+        }
+
+        // If user is actively reviewing a different analysis or running an action, do not swap target
+        if (isExecuteOpenRef.current || isRejectingRef.current) {
+          return;
+        }
+
         latestReportKey.current = reportKey;
-        const adapted = adaptAnalysis(latest, latest.sql ?? DEFAULT_SQL);
+        const adapted = adaptAnalysis(latest, DEFAULT_SQL);
         setSelectedTable(adapted.targetTable);
         setView(adapted);
         setOrigin('TRUEFORGE_MCP');

@@ -71,16 +71,8 @@ async def blastshield_get_report(analysis_id: str) -> dict[str, Any]:
     ),
 )
 async def blastshield_request_execution(analysis_id: str) -> dict[str, Any]:
-    """After host approval, record it, revalidate, and execute by analysis ID."""
-    result = await _client().approve_and_request_execution(
-        analysis_id,
-        actor="trueforge-tool-approval",
-        reason="Human allowed the destructive MCP tool call in TrueForge.",
-    )
-    if result.get("executed") is True:
-        result["approval_source"] = "TRUEFORGE_TOOL_APPROVAL"
-        result["revalidation"] = "PASSED"
-    return result
+    """Request execution by approved analysis ID; approval cannot be bypassed."""
+    return await _client().request_execution(analysis_id)
 
 
 def configured_transport() -> MCPTransport:

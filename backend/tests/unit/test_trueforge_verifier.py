@@ -18,16 +18,24 @@ def demo_report() -> dict:
         "analysis_id": "demo-id",
         "status": "PENDING_APPROVAL",
         "requires_approval": True,
+        "action": {
+            "operation": "DELETE",
+            "table": "users",
+            "has_where": True,
+        },
+        "safer_alternative": {
+            "available": False,
+        },
         "impact": {
             "direct_rows": 40,
             "dependent_rows": 252,
             "total_rows": 292,
         },
         "dependencies": [
-            {"rows": 100},
-            {"rows": 32},
-            {"rows": 20},
-            {"rows": 100},
+            {"rows": 100, "depth": 1, "effect": "DELETE"},
+            {"rows": 32, "depth": 2, "effect": "DELETE"},
+            {"rows": 20, "depth": 1, "effect": "DELETE"},
+            {"rows": 100, "depth": 1, "effect": "DELETE"},
         ],
         "risk": {
             "score": 68,

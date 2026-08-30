@@ -100,76 +100,19 @@ async def test_mcp_client_preserves_approval_required_error() -> None:
 
 
 @pytest.mark.anyio
-async def test_trueforge_approved_execution_records_approval_before_execute() -> None:
-    requests: list[tuple[str, str]] = []
-
-    def handler(request: httpx.Request) -> httpx.Response:
-        requests.append((request.method, request.url.path))
-        if request.method == "GET":
-            return httpx.Response(200, json={"status": "PENDING_APPROVAL"})
-        if request.url.path.endswith("/approve"):
-            return httpx.Response(200, json={"status": "APPROVED"})
-        return httpx.Response(
-            200,
-            json={"executed": True, "status": "EXECUTED", "affected_rows": 40},
-        )
-
-    client = BlastShieldAPIClient(
-        "http://blastshield.test",
-        transport=httpx.MockTransport(handler),
-    )
-    response = await client.approve_and_request_execution(
-        "analysis-id",
-        actor="trueforge-tool-approval",
-        reason="Human allowed the tool call.",
-    )
-
-    assert response["status"] == "EXECUTED"
-    assert requests == [
-        ("GET", "/api/v1/analyses/analysis-id"),
-        ("POST", "/api/v1/analyses/analysis-id/approve"),
-        ("POST", "/api/v1/analyses/analysis-id/execute"),
-    ]
-
-
-@pytest.mark.anyio
-async def test_trueforge_approved_execution_refuses_terminal_analysis() -> None:
-    def handler(_request: httpx.Request) -> httpx.Response:
-        return httpx.Response(200, json={"status": "REJECTED"})
-
-    client = BlastShieldAPIClient(
-        "http://blastshield.test",
-        transport=httpx.MockTransport(handler),
-    )
-    response = await client.approve_and_request_execution(
-        "analysis-id",
-        actor="trueforge-tool-approval",
-        reason="Human allowed the tool call.",
-    )
-
-    assert response["code"] == "INVALID_STATE"
-
-
-@pytest.mark.anyio
-async def test_execution_tool_reports_trueforge_approval_and_revalidation(
+async def test_execution_tool_calls_request_execution_directly(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     class StubClient:
-        async def approve_and_request_execution(
-            self,
-            analysis_id: str,
-            *,
-            actor: str,
-            reason: str,
-        ) -> dict:
+        async def request_execution(self, analysis_id: str) -> dict:
             assert analysis_id == "analysis-id"
-            assert actor == "trueforge-tool-approval"
-            assert "Human allowed" in reason
             return {"executed": True, "status": "EXECUTED", "affected_rows": 40}
 
     monkeypatch.setattr(server_module, "_client", lambda: StubClient())
 
     response = await blastshield_request_execution("analysis-id")
 
-    assert response["approval_source"] == "TRUEFORGE_TOOL_APPROVAL"
-    assert response["revalidation"] == "PASSED"
+    assert response["executed"] is True
+    assert response["status"] == "EXECUTED"
+    assert response["affected_rows"] == 40
+
