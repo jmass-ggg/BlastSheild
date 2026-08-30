@@ -78,8 +78,13 @@ export function analyze(payload: AnalyzeRequest): Promise<AnalysisResponse> {
   });
 }
 
-export function listAnalyses(limit = 100): Promise<AnalysisResponse[]> {
-  return request<AnalysisResponse[]>(`/analyses?limit=${limit}`);
+export function listAnalyses(
+  limit = 100,
+  options?: { source?: string }
+): Promise<AnalysisResponse[]> {
+  const query = new URLSearchParams({ limit: String(limit) });
+  if (options?.source) query.set('source', options.source);
+  return request<AnalysisResponse[]>(`/analyses?${query.toString()}`);
 }
 
 export function getAnalysis(analysisId: string): Promise<AnalysisResponse> {

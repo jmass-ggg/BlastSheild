@@ -10,13 +10,18 @@ router = APIRouter(tags=["analyses"])
 
 
 @router.get("/analyses", response_model=list[AnalysisResponse])
-def list_analyses(limit: int = Query(default=100, ge=1, le=100)) -> list[AnalysisResponse]:
-    records = AnalysisRepository().list_completed(limit=limit)
+def list_analyses(
+    limit: int = Query(default=100, ge=1, le=100),
+    source: str | None = Query(default=None),
+) -> list[AnalysisResponse]:
+    """List completed analysis records, with optional source filtering and limit."""
+    records = AnalysisRepository().list_completed(limit=limit, source=source)
     return [AnalysisResponse.model_validate(record.report) for record in records]
 
 
 @router.get("/analyses/{analysis_id}", response_model=AnalysisResponse)
 def get_analysis(analysis_id: uuid.UUID) -> AnalysisResponse:
+    """Retrieve an analysis record and its full blast-radius report by UUID."""
     record = AnalysisRepository().get(analysis_id)
     if not record.report:
         raise NotFoundError("The analysis report is not available.")

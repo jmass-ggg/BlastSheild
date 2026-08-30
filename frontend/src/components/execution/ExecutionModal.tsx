@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   AlertTriangle,
   XCircle,
@@ -27,7 +27,7 @@ interface ExecutionModalProps {
   view: AnalysisView;
   onClose: () => void;
   /** Fired after any transition that changes the analysis status server-side. */
-  onStatusChange: (status: string) => void;
+  onStatusChange: (analysisId: string, status: string) => void;
 }
 
 export const ExecutionModal: React.FC<ExecutionModalProps> = ({
@@ -47,6 +47,13 @@ export const ExecutionModal: React.FC<ExecutionModalProps> = ({
   const confirmationPhrase = `EXECUTE ${view.targetTable}`;
   const canExecute = !requiresTypedConfirmation || confirmation === confirmationPhrase;
 
+  const targetAnalysisIdRef = useRef<string | null>(null);
+  if (open && targetAnalysisIdRef.current === null) {
+    targetAnalysisIdRef.current = view.analysisId;
+  } else if (!open && targetAnalysisIdRef.current !== null) {
+    targetAnalysisIdRef.current = null;
+  }
+
   useEffect(() => {
     if (open) {
       setPhase('confirm');
@@ -58,6 +65,19 @@ export const ExecutionModal: React.FC<ExecutionModalProps> = ({
     }
   }, [open, view.analysisId]);
 
+  // If the active analysis changes while the modal is open and not mid-execution,
+  // close the modal to prevent approving or executing a different target.
+  useEffect(() => {
+    if (
+      open &&
+      phase !== 'running' &&
+      targetAnalysisIdRef.current &&
+      view.analysisId !== targetAnalysisIdRef.current
+    ) {
+      onClose();
+    }
+  }, [open, phase, view.analysisId, onClose]);
+
   useEffect(() => {
     if (!open) return;
     const onKeyDown = (event: KeyboardEvent) => {
@@ -68,6 +88,7 @@ export const ExecutionModal: React.FC<ExecutionModalProps> = ({
   }, [open, phase, onClose]);
 
   const run = useCallback(async () => {
+    const targetId = targetAnalysisIdRef.current ?? view.analysisId;
     setPhase('running');
     setError(null);
     setErrorRemediation(null);
@@ -76,22 +97,22 @@ export const ExecutionModal: React.FC<ExecutionModalProps> = ({
       // approving twice is a 409, so only transition when still pending.
       if (view.status === 'PENDING_APPROVAL') {
         setStep('Recording human approval...');
-        const approval = await approveAnalysis(view.analysisId, { actor: 'ui' });
-        onStatusChange(approval.status);
+        const approval = await approveAnalysis(targetId, { actor: 'ui' });
+        onStatusChange(targetId, approval.status);
       }
 
       setStep('Revalidating against production, then committing...');
-      const execution = await executeAnalysis(view.analysisId);
+      const execution = await executeAnalysis(targetId);
 
       if (isStale(execution)) {
         setPhase('stale');
-        onStatusChange('STALE');
+        onStatusChange(targetId, 'STALE');
         return;
       }
 
       setResult(execution);
       setPhase('success');
-      onStatusChange(execution.status);
+      onStatusChange(targetId, execution.status);
     } catch (caught) {
       if (caught instanceof ApiError) {
         setError(`${caught.code}: ${caught.message}`);

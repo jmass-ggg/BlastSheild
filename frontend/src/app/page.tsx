@@ -11,8 +11,10 @@ import { SchemaSection } from '../components/schema/SchemaSection';
 import { ExecutionModal } from '../components/execution/ExecutionModal';
 import { ActionTimeline } from '../components/timeline/ActionTimeline';
 import { DEFAULT_SQL, PRESET_QUERIES } from '../constants/presetQueries';
-import { ApiError, analyze, healthCheck, listAnalyses, rejectAnalysis } from '../lib/apiClient';
+import { ApiError, analyze, getAnalysis, healthCheck, listAnalyses, rejectAnalysis } from '../lib/apiClient';
 import { adaptAnalysis } from '../lib/adaptAnalysis';
+import { filterUnseenReports, enqueuePendingReports, resolveActiveStatusUpdate } from '../lib/pollingManager';
+import type { AnalysisResponse } from '../types/api';
 import { AnalysisView, ConnectionState, ReportOrigin, TableSchema } from '../types';
 
 export default function Home() {
@@ -34,6 +36,8 @@ export default function Home() {
   const [origin, setOrigin] = useState<ReportOrigin | null>(null);
   const [receivedAt, setReceivedAt] = useState<Date>(new Date());
   const [showNewReportNotice, setShowNewReportNotice] = useState(false);
+  const [pendingReports, setPendingReports] = useState<AnalysisResponse[]>([]);
+  const knownMcpIds = useRef<Set<string>>(new Set());
   const latestReportKey = useRef<string | null>(null);
   const hasEstablishedReportBaseline = useRef(false);
   const reportRef = useRef<HTMLDivElement | null>(null);
@@ -89,50 +93,24 @@ export default function Home() {
     let cancelled = false;
     let pollSeq = 0;
 
-    const syncLatestReport = async () => {
-      if (isAnalyzing || isExecuteOpenRef.current || isRejectingRef.current) return;
-      const currentSeq = ++pollSeq;
+    const refreshActiveView = async (activeView: AnalysisView) => {
       try {
-        const reports = await listAnalyses(1);
-        const latest = reports[0];
-        if (cancelled || currentSeq !== pollSeq) return;
-
-        // Reports are persisted across restarts. Treat the newest report at page
-        // load as history so a fresh dashboard does not look pre-populated, while
-        // retaining polling for analyses subsequently created by TrueForge/MCP.
-        if (!hasEstablishedReportBaseline.current) {
-          hasEstablishedReportBaseline.current = true;
-          latestReportKey.current = latest
-            ? `${latest.analysis_id}:${latest.status}`
-            : null;
-          return;
+        const report = await getAnalysis(activeView.analysisId);
+        const nextStatus = resolveActiveStatusUpdate(activeView.status, report.status);
+        if (nextStatus) {
+          setView((prev) => (prev && prev.analysisId === report.analysis_id ? { ...prev, status: nextStatus } : prev));
         }
+      } catch {
+        // best-effort active report polling
+      }
+    };
 
-        if (!latest) return;
-        const reportKey = `${latest.analysis_id}:${latest.status}`;
-        if (latestReportKey.current === reportKey) return;
+    const processNewMcpReports = (newReports: AnalysisResponse[], hasView: boolean) => {
+      if (newReports.length === 0) return;
+      for (const r of newReports) knownMcpIds.current.add(r.analysis_id);
 
-        // If the user has the modal open or is actively reviewing an analysis,
-        // do not swap the execution target out from under them.
-        const currentView = viewRef.current;
-        if (currentView && currentView.analysisId === latest.analysis_id) {
-          const terminalStatuses = ['APPROVED', 'EXECUTED', 'REJECTED', 'STALE'];
-          // Prevent out-of-order race from reverting an approved or terminal state back to pending
-          if (terminalStatuses.includes(currentView.status) && latest.status === 'PENDING_APPROVAL') {
-            return;
-          }
-          latestReportKey.current = reportKey;
-          setView((prev) => (prev ? { ...prev, status: latest.status } : null));
-          return;
-        }
-
-        // If user is actively reviewing a different analysis or running an action, do not swap target
-        if (isExecuteOpenRef.current || isRejectingRef.current) {
-          return;
-        }
-
-        latestReportKey.current = reportKey;
-        const adapted = adaptAnalysis(latest, DEFAULT_SQL);
+      if (!hasView) {
+        const adapted = adaptAnalysis(newReports[0], DEFAULT_SQL);
         setSelectedTable(adapted.targetTable);
         setView(adapted);
         setOrigin('TRUEFORGE_MCP');
@@ -141,8 +119,34 @@ export default function Home() {
         if (noticeTimerRef.current) window.clearTimeout(noticeTimerRef.current);
         noticeTimerRef.current = window.setTimeout(() => setShowNewReportNotice(false), 6000);
         window.setTimeout(() => reportRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+      } else {
+        setPendingReports((prev) => enqueuePendingReports(prev, newReports));
+        setShowNewReportNotice(true);
+      }
+    };
+
+    const syncLatestReport = async () => {
+      if (isAnalyzing || isExecuteOpenRef.current || isRejectingRef.current) return;
+      const currentSeq = ++pollSeq;
+      try {
+        const currentView = viewRef.current;
+        if (currentView) {
+          await refreshActiveView(currentView);
+        }
+
+        const mcpReports = await listAnalyses(10, { source: 'trueforge_agent' });
+        if (cancelled || currentSeq !== pollSeq) return;
+
+        if (!hasEstablishedReportBaseline.current) {
+          hasEstablishedReportBaseline.current = true;
+          for (const r of mcpReports) knownMcpIds.current.add(r.analysis_id);
+          return;
+        }
+
+        const unseen = filterUnseenReports(mcpReports, knownMcpIds.current);
+        processNewMcpReports(unseen, currentView !== null);
       } catch {
-        // The prompt owns user-facing connection errors. Background sync is best effort.
+        // best-effort background sync
       }
     };
 
@@ -218,10 +222,10 @@ export default function Home() {
     }
   };
 
-  const handleStatusChange = useCallback((status: string) => {
+  const handleStatusChange = useCallback((analysisId: string, status: string) => {
     setView((current) => {
-      if (!current) return current;
-      latestReportKey.current = `${current.analysisId}:${status}`;
+      if (!current || current.analysisId !== analysisId) return current;
+      latestReportKey.current = `${analysisId}:${status}`;
       return { ...current, status };
     });
   }, []);
@@ -238,16 +242,41 @@ export default function Home() {
           >
             <span className="flex items-center gap-2 font-medium">
               <Bot className="h-4 w-4 text-sky-600" />
-              New analysis received from TrueForge through the BlastShield MCP connector.
+              {pendingReports.length > 0
+                ? `${pendingReports.length} new MCP ${pendingReports.length === 1 ? 'analysis' : 'analyses'} received from TrueForge (latest: ${pendingReports[0].analysis_id.slice(0, 8)}).`
+                : 'New analysis received from TrueForge through the BlastShield MCP connector.'}
             </span>
-            <button
-              type="button"
-              onClick={() => setShowNewReportNotice(false)}
-              className="rounded-lg p-1 text-sky-700 hover:bg-sky-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
-              aria-label="Dismiss notification"
-            >
-              <X className="h-4 w-4" />
-            </button>
+            <div className="flex items-center gap-2">
+              {pendingReports.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const [nextReport, ...remaining] = pendingReports;
+                    const adapted = adaptAnalysis(nextReport, DEFAULT_SQL);
+                    setView(adapted);
+                    setSelectedTable(adapted.targetTable);
+                    setOrigin('TRUEFORGE_MCP');
+                    setReceivedAt(new Date());
+                    setPendingReports(remaining);
+                    if (remaining.length === 0) setShowNewReportNotice(false);
+                  }}
+                  className="px-3 py-1 bg-sky-600 hover:bg-sky-700 text-white font-medium text-xs rounded-lg transition-colors cursor-pointer"
+                >
+                  Switch to New Analysis
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => {
+                  setShowNewReportNotice(false);
+                  setPendingReports([]);
+                }}
+                className="rounded-lg p-1 text-sky-700 hover:bg-sky-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 cursor-pointer"
+                aria-label="Dismiss notification"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
           </div>
         )}
 
