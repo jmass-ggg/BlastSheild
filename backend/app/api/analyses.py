@@ -10,8 +10,11 @@ router = APIRouter(tags=["analyses"])
 
 
 @router.get("/analyses", response_model=list[AnalysisResponse])
-def list_analyses(limit: int = Query(default=100, ge=1, le=100)) -> list[AnalysisResponse]:
-    records = AnalysisRepository().list_completed(limit=limit)
+def list_analyses(
+    limit: int = Query(default=100, ge=1, le=100),
+    source: str | None = Query(default=None),
+) -> list[AnalysisResponse]:
+    records = AnalysisRepository().list_completed(limit=limit, source=source)
     return [AnalysisResponse.model_validate(record.report) for record in records]
 
 

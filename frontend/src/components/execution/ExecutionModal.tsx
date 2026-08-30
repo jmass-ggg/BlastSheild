@@ -47,6 +47,13 @@ export const ExecutionModal: React.FC<ExecutionModalProps> = ({
   const confirmationPhrase = `EXECUTE ${view.targetTable}`;
   const canExecute = !requiresTypedConfirmation || confirmation === confirmationPhrase;
 
+  const targetAnalysisIdRef = useRef<string | null>(null);
+  if (open && targetAnalysisIdRef.current === null) {
+    targetAnalysisIdRef.current = view.analysisId;
+  } else if (!open && targetAnalysisIdRef.current !== null) {
+    targetAnalysisIdRef.current = null;
+  }
+
   useEffect(() => {
     if (open) {
       setPhase('confirm');
@@ -58,6 +65,13 @@ export const ExecutionModal: React.FC<ExecutionModalProps> = ({
     }
   }, [open, view.analysisId]);
 
+  // If the active analysis changes while the modal is open, immediately close to protect against target swap
+  useEffect(() => {
+    if (open && targetAnalysisIdRef.current && view.analysisId !== targetAnalysisIdRef.current) {
+      onClose();
+    }
+  }, [open, view.analysisId, onClose]);
+
   useEffect(() => {
     if (!open) return;
     const onKeyDown = (event: KeyboardEvent) => {
@@ -68,6 +82,7 @@ export const ExecutionModal: React.FC<ExecutionModalProps> = ({
   }, [open, phase, onClose]);
 
   const run = useCallback(async () => {
+    const targetId = targetAnalysisIdRef.current ?? view.analysisId;
     setPhase('running');
     setError(null);
     setErrorRemediation(null);
@@ -76,12 +91,12 @@ export const ExecutionModal: React.FC<ExecutionModalProps> = ({
       // approving twice is a 409, so only transition when still pending.
       if (view.status === 'PENDING_APPROVAL') {
         setStep('Recording human approval...');
-        const approval = await approveAnalysis(view.analysisId, { actor: 'ui' });
+        const approval = await approveAnalysis(targetId, { actor: 'ui' });
         onStatusChange(approval.status);
       }
 
       setStep('Revalidating against production, then committing...');
-      const execution = await executeAnalysis(view.analysisId);
+      const execution = await executeAnalysis(targetId);
 
       if (isStale(execution)) {
         setPhase('stale');
