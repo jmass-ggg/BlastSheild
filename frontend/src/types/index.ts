@@ -64,10 +64,6 @@ export interface AnalysisView {
   totalRows: number;
   dependencies: DependencyImpact[];
 
-  activeSubscriptions: number;
-  mrrAtRisk: number;
-  arrAtRisk: number;
-
   safer: SaferAlternativeView;
   affectedTableMap: Record<string, TableImpactInfo>;
   timeline: TimelineItem[];

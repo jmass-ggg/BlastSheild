@@ -28,6 +28,7 @@ export default function Home() {
   const [isRejecting, setIsRejecting] = useState(false);
   const [isSaferPreview, setIsSaferPreview] = useState(false);
   const latestReportKey = useRef<string | null>(null);
+  const hasEstablishedReportBaseline = useRef(false);
 
   // Keep the dashboard synchronized with analyses created by TrueForge/MCP.
   // The backend remains authoritative; the browser never recomputes evidence.
@@ -39,7 +40,20 @@ export default function Home() {
       try {
         const reports = await listAnalyses(1);
         const latest = reports[0];
-        if (!latest || cancelled) return;
+        if (cancelled) return;
+
+        // Reports are persisted across restarts. Treat the newest report at page
+        // load as history so a fresh dashboard does not look pre-populated, while
+        // retaining polling for analyses subsequently created by TrueForge/MCP.
+        if (!hasEstablishedReportBaseline.current) {
+          hasEstablishedReportBaseline.current = true;
+          latestReportKey.current = latest
+            ? `${latest.analysis_id}:${latest.status}`
+            : null;
+          return;
+        }
+
+        if (!latest) return;
         const reportKey = `${latest.analysis_id}:${latest.status}`;
         if (latestReportKey.current === reportKey) return;
         latestReportKey.current = reportKey;
@@ -69,6 +83,7 @@ export default function Home() {
     try {
       const report = await analyze({ sql: trimmed, source: 'ui' });
       const adapted = adaptAnalysis(report, trimmed);
+      latestReportKey.current = `${report.analysis_id}:${report.status}`;
       setView(adapted);
       setSelectedTable(adapted.targetTable);
     } catch (caught) {

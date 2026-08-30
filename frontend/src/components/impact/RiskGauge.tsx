@@ -245,8 +245,8 @@ export const RiskGauge: React.FC<RiskGaugeProps> = ({
             </div>
             <FactorBar label="Op Weight" value={breakdown.operation} max={25} isSafer={isSaferMode} />
             <FactorBar label="Direct Impact" value={breakdown.direct_impact} max={20} isSafer={isSaferMode} />
-            <FactorBar label="Cascade Depth" value={breakdown.dependent_impact + breakdown.cascade} max={30} isSafer={isSaferMode} />
-            <FactorBar label="ARR / Rev At Risk" value={breakdown.business_impact} max={15} isSafer={isSaferMode} />
+            <FactorBar label="Dependent Rows" value={breakdown.dependent_impact} max={20} isSafer={isSaferMode} />
+            <FactorBar label="FK Cascade" value={breakdown.cascade} max={25} isSafer={isSaferMode} />
             <FactorBar label="Recoverability" value={breakdown.recoverability} max={10} isSafer={isSaferMode} />
           </div>
         )}
@@ -258,7 +258,7 @@ export const RiskGauge: React.FC<RiskGaugeProps> = ({
             <Shield className="w-3.5 h-3.5 text-emerald-700" />
             <span>Score dropped from <strong>{originalScore} ({originalLevel})</strong> ➔ <strong>{score} ({level})</strong></span>
           </span>
-          <span className="font-bold text-emerald-700">67% RISK MITIGATED</span>
+          <span className="font-bold text-emerald-700">-{scoreDiff} RISK POINTS</span>
         </div>
       )}
     </div>

@@ -13,7 +13,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { AnalysisView } from '../../types';
-import { formatNumber, formatCurrency } from '../../lib/formatters';
+import { formatNumber } from '../../lib/formatters';
 
 interface SaferActionCardProps {
   view: AnalysisView;
@@ -78,7 +78,7 @@ export const SaferActionCard: React.FC<SaferActionCardProps> = ({
                 BlastShield Safer Alternative
               </h3>
               <p className="text-caption text-emerald-600 font-medium">
-                Reversible soft delete · Zero downstream cascades
+                Soft-delete alternative · Avoids FK DELETE cascades
               </p>
             </div>
           </div>
@@ -108,10 +108,10 @@ export const SaferActionCard: React.FC<SaferActionCardProps> = ({
           <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200 flex items-center justify-between gap-3">
             <div>
               <span className="text-body-sm text-emerald-800 font-semibold block">
-                Cascading Deletions:
+                Rows Deleted by this UPDATE:
               </span>
               <span className="text-caption text-emerald-600 font-normal">
-                Foreign-key triggers bypassed
+                ON DELETE actions are not invoked
               </span>
             </div>
             <span className="text-h4 font-bold text-emerald-700 font-mono tracking-tight shrink-0">
@@ -121,23 +121,19 @@ export const SaferActionCard: React.FC<SaferActionCardProps> = ({
 
           <div className="p-3 bg-emerald-50/70 rounded-xl border border-emerald-200 space-y-1.5">
             <span className="text-emerald-900 font-semibold block text-badge uppercase tracking-wider">
-              Safety Guarantees:
+              Projected Database Effect:
             </span>
             <Guarantee>
               Drops risk score from <strong>{view.riskScore} {view.riskLevel}</strong> ➔{' '}
               <strong className="text-emerald-700">{safer.riskScore} {safer.riskLevel}</strong>
             </Guarantee>
             <Guarantee>
-              {formatNumber(savedRows)} cascading rows preserved across{' '}
+              {formatNumber(savedRows)} dependent rows are not targeted across{' '}
               {view.dependencies.length} dependent {view.dependencies.length === 1 ? 'table' : 'tables'}
             </Guarantee>
-            {view.arrAtRisk > 0 && (
-              <Guarantee>
-                {formatNumber(view.activeSubscriptions)} active subscriptions intact (
-                {formatCurrency(view.arrAtRisk)} ARR)
-              </Guarantee>
-            )}
-            <Guarantee>100% Reversible by clearing the deleted_at column</Guarantee>
+            <Guarantee>
+              The soft-delete flag can be cleared; application-level behavior is not verified
+            </Guarantee>
           </div>
         </div>
       </div>
@@ -179,7 +175,7 @@ export const SaferActionCard: React.FC<SaferActionCardProps> = ({
         <p className="text-caption text-slate-500 font-normal flex items-start gap-1.5">
           <Info className="w-3.5 h-3.5 shrink-0 mt-0.5 text-slate-400" />
           <span>
-            BlastShield simulation mode: preview above shows graph and risk under soft delete. BlastShield executor commits DELETE only.
+            Projection uses PostgreSQL row counts and FK metadata. Triggers and application-level cascades are outside the current analysis.
           </span>
         </p>
       </div>

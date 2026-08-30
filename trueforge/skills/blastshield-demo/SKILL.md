@@ -1,6 +1,6 @@
 ---
 name: blastshield-demo
-description: Analyze proposed PostgreSQL DELETE actions through BlastShield, independently verify the returned evidence in the TrueForge sandbox, explain business impact, recommend a decision, and route any execution attempt through TrueForge human approval.
+description: Analyze proposed PostgreSQL DELETE actions through BlastShield, independently verify row and foreign-key impact in the TrueForge sandbox, recommend a decision, and route any execution attempt through TrueForge human approval.
 ---
 
 # BlastShield TrueForge workflow
@@ -12,8 +12,8 @@ a proposed DELETE would affect.
    Never use a generic SQL tool or a database credential.
 2. Call `blastshield_analyze` with the proposed DELETE and a short reason.
 3. Call `blastshield_get_report` with the returned `analysis_id`. Confirm that
-   the persisted report has the same ID, status, impact, business impact, and
-   risk evidence as the original result.
+   the persisted report has the same ID, status, row impact, dependency paths,
+   and risk evidence as the original result.
 4. Save the persisted report as JSON inside the TrueForge sandbox and run:
 
    ```bash
@@ -28,8 +28,8 @@ a proposed DELETE would affect.
 6. If verification fails, stop. Explain the failed checks and do not request
    execution.
 7. If verification passes, tell the user the direct rows, dependent rows,
-   total rows, active subscriptions, MRR, ARR, score, and risk level. For HIGH
-   or CRITICAL risk, explicitly say: "I recommend rejecting this operation."
+   total rows, dependency paths, score, and risk level. For HIGH or CRITICAL
+   risk, explicitly say: "I recommend rejecting this operation."
 8. If the user's request clearly asks to perform the deletion, call
    `blastshield_request_execution` directly after presenting the verified
    report. Do not call it from Code Mode or from sandbox code. TrueForge must
@@ -47,12 +47,11 @@ sandbox verifier passes:
 I found 292 total affected records.
 Risk = HIGH.
 
-14 active subscriptions would be affected.
-$406 MRR is at risk.
+40 target rows match the DELETE condition.
+252 dependent rows are connected by foreign keys.
 
 I recommend rejecting this operation.
 ```
 
 The human approval dialog is the decision point. Never describe a model's tool
 call as human approval; only the TrueForge Allow action authorizes execution.
-

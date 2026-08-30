@@ -1,9 +1,9 @@
 'use client';
 
 import React from 'react';
-import { ShieldAlert, AlertTriangle, DollarSign, Ban } from 'lucide-react';
+import { ShieldAlert, AlertTriangle, Ban } from 'lucide-react';
 import { AnalysisView, RiskLevel } from '../../types';
-import { formatNumber, formatCurrency } from '../../lib/formatters';
+import { formatNumber } from '../../lib/formatters';
 import { describeReversibility } from '../../lib/adaptAnalysis';
 
 const RISK_BADGE: Record<RiskLevel, string> = {
@@ -106,28 +106,6 @@ export const ProposedActionCard: React.FC<ProposedActionCardProps> = ({
                   </span>
                 </div>
               ))}
-            </div>
-          )}
-
-          {view.arrAtRisk > 0 && (
-            <div className="p-3 bg-rose-50/70 rounded-xl border border-rose-200 flex items-center justify-between gap-3">
-              <div>
-                <span className="text-body-sm text-rose-800 font-semibold flex items-center gap-1">
-                  <DollarSign className="w-3.5 h-3.5 text-rose-600" />
-                  Revenue at Immediate Risk:
-                </span>
-                <span className="text-caption text-slate-500 font-normal">
-                  {formatNumber(view.activeSubscriptions)} active recurring accounts
-                </span>
-              </div>
-              <div className="text-right shrink-0">
-                <div className="text-h4 font-bold text-rose-700 font-mono tracking-tight">
-                  {formatCurrency(view.arrAtRisk)} ARR
-                </div>
-                <div className="text-caption text-slate-500 font-normal">
-                  ({formatCurrency(view.mrrAtRisk)} MRR)
-                </div>
-              </div>
             </div>
           )}
 

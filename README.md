@@ -75,8 +75,103 @@ analysis ID, revalidates it, and runs through a restricted database role.
 
 The supported executable shape is one PostgreSQL `DELETE FROM table [WHERE
 condition]`. SQLGlot parsing rejects multiple statements and unsupported SQL.
-Schema metadata, foreign keys, correlated counts, business impact, risk, and
+Schema metadata, foreign keys, correlated row counts, risk, and
 safer alternatives are calculated from the live database.
+
+## Hackathon presentation script
+
+The following script is designed for a three-to-four-minute project
+explanation followed by the live demo.
+
+> Hello everyone. Our project is called **BlastShield**.
+>
+> AI agents can now generate and execute database queries. That is powerful,
+> but it is also dangerous. An AI agent can generate a perfectly valid SQL
+> statement that causes serious production damage.
+>
+> For example, consider this request: *Delete users who have been inactive for
+> more than two years.* The generated SQL looks simple:
+>
+> ```sql
+> DELETE FROM users
+> WHERE last_login < NOW() - INTERVAL '2 years';
+> ```
+>
+> However, those users may be connected to orders, sessions, subscriptions,
+> payments, or other records through foreign keys. A single DELETE can silently
+> trigger a much larger cascade.
+>
+> BlastShield solves this problem by acting as a safety gateway between an AI
+> agent and PostgreSQL. The AI can propose a destructive operation, but it does
+> not receive unrestricted database access.
+>
+> The flow starts in **TrueForge**. The user describes the requested operation
+> in natural language, and the TrueForge agent calls the BlastShield MCP tool
+> `blastshield_analyze` with the proposed SQL.
+>
+> BlastShield parses the statement, rejects unsupported or multiple statements,
+> and then uses a read-only database role to inspect the live PostgreSQL schema
+> and data. It measures the directly matching rows, follows foreign-key
+> relationships, detects `ON DELETE CASCADE` paths, and counts the dependent
+> rows that could be affected.
+>
+> BlastShield then applies a deterministic risk policy based on the operation,
+> direct impact, dependent impact, cascade severity, and recoverability. The
+> same SQL and database state produce the same result; the risk score is not an
+> AI guess.
+>
+> In our demo, BlastShield finds 40 directly matching users and 252 dependent
+> rows, giving 292 potentially affected rows in total. The result is a risk
+> score of 68 out of 100, classified as **HIGH**.
+>
+> Nothing has been deleted. The analysis is stored as `PENDING_APPROVAL`, and
+> the BlastShield dashboard automatically displays the report created through
+> TrueForge. The dashboard shows the SQL, affected-row counts, risk factors,
+> lifecycle state, and an interactive dependency graph:
+>
+> ```text
+> users
+> ├── orders
+> │   └── payments
+> ├── sessions
+> └── subscriptions
+> ```
+>
+> BlastShield also proposes a lower-risk soft-delete alternative when the
+> target table supports it. This is presented as a recommendation, not a
+> guarantee, because database triggers and application-level behavior may
+> require additional review.
+>
+> Next, the agent attempts to call `blastshield_request_execution`. TrueForge
+> stops before invoking this destructive tool and shows the human **Deny** or
+> **Allow** approval checkpoint.
+>
+> If the human denies the tool call, production remains unchanged. If the
+> human allows it, BlastShield records the approval, revalidates the stored
+> analysis against the current database state, and permits only the exact SQL
+> that was analyzed. If the data or schema changed, BlastShield stops the
+> operation as stale. Otherwise, the constrained executor runs it in an
+> isolated transaction through a restricted database role.
+>
+> The security model separates responsibilities. The analyzer can read domain
+> data but cannot write. The application role manages reports and lifecycle
+> state but cannot read domain tables. The executor can perform the approved
+> operation but cannot access the control plane. TrueForge and MCP have no
+> database credentials.
+>
+> In short: **TrueForge orchestrates the AI agent and human tool approval,
+> BlastShield provides production-aware deterministic analysis and
+> revalidation, the dashboard explains the blast radius, and the constrained
+> executor runs only the approved operation.**
+>
+> BlastShield lets AI agents work with production databases without giving
+> them unrestricted destructive power. The AI proposes, BlastShield measures,
+> the human decides, and the executor remains constrained.
+
+For the safest live presentation, choose **Deny** at the TrueForge checkpoint.
+This demonstrates the complete analysis and approval flow while leaving all
+demo rows unchanged. Use **Allow** only when intentionally demonstrating the
+executor, because it commits the stored DELETE after successful revalidation.
 
 ## Prerequisites
 
@@ -236,9 +331,10 @@ Click **Analyze**.
 **What result you should get:** BlastShield inspects the query but does not
 execute the `DELETE`. With an untouched demo database, the report says that 40
 `users` rows match directly and 252 dependent rows could also be deleted, for
-292 affected rows in total. It finds 14 active subscriptions, 406 in monthly
-recurring revenue, and 4,872 in annual recurring revenue at risk. The final
-risk result is `60 / HIGH`.
+292 affected rows in total. The generic database risk result is `68 / HIGH`.
+It is derived from operation type, direct rows, dependent rows, foreign-key
+cascade severity, and recoverability; it does not assume application-specific
+revenue or subscription semantics.
 
 The dependency graph shows that `users` affects `orders`, `sessions`, and
 `subscriptions`. It also shows that `orders` affects `payments`. This explains
@@ -368,8 +464,8 @@ Errors consistently use safe JSON:
 }
 ```
 
-The configured frontend CORS origin is `http://localhost:3000`. MRR and ARR are
-returned as JSON numbers. State changes are visible through the GET endpoints.
+The configured frontend CORS origin is `http://localhost:3000`. State changes
+are visible through the GET endpoints.
 
 ## MCP and TrueForge
 
@@ -464,8 +560,8 @@ Agent:
 "I found 292 total affected records.
 Risk = HIGH.
 
-14 active subscriptions would be affected.
-$406 MRR is at risk.
+40 target rows match the DELETE condition.
+252 dependent rows are connected by foreign keys.
 
 I recommend rejecting this operation."
 
@@ -484,8 +580,8 @@ During the demo:
 1. Tell the TrueForge agent: `Delete inactive users older than two years.`
 2. The agent calls `blastshield_analyze`, retrieves the persisted report, and
    runs the bundled verifier in the TrueForge sandbox.
-3. Show 40 direct rows, 252 dependent rows, 14 active subscriptions, 406 MRR,
-   4,872 ARR, risk 60/HIGH, and the agent's recommendation to reject.
+3. Show 40 direct rows, 252 dependent rows, risk 68/HIGH, the dependency graph,
+   and the agent's recommendation to reject.
 4. The agent directly requests `blastshield_request_execution`. TrueForge must
    stop before invocation and display **Deny** and **Allow**.
 5. Choose **Deny** to prove that production remains unchanged, or choose
@@ -537,6 +633,7 @@ and volume. Do not use it for a real database.
 - Logs: `make logs`. Lifecycle logs contain IDs, states, duration, measurement
   mode, and error codes, but not SQL rows or credentials.
 
-API route compatibility is unchanged. Analysis responses now also include the
-submitted `sql` string so the dashboard can accurately display reports created
-through TrueForge/MCP.
+API route compatibility is unchanged. Analysis responses include the submitted
+`sql` string for TrueForge/MCP dashboard synchronization. The former
+subscription-specific `business_impact` object and risk-breakdown field were
+removed so analysis works across arbitrary PostgreSQL schemas.

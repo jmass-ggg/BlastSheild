@@ -116,7 +116,6 @@ def verify_api(api_url: str) -> dict[str, Any]:
         "action",
         "impact",
         "dependencies",
-        "business_impact",
         "risk",
         "graph",
         "safer_alternative",
@@ -133,13 +132,7 @@ def verify_api(api_url: str) -> dict[str, Any]:
         "total_rows": 292,
     }:
         raise CheckFailed("Demo impact metrics do not match the expected fixture.")
-    if report["business_impact"] != {
-        "active_subscriptions": 14,
-        "mrr_at_risk": 406.0,
-        "arr_at_risk": 4872.0,
-    }:
-        raise CheckFailed("Demo business-impact metrics are not deterministic.")
-    if report["risk"]["score"] != 60 or report["risk"]["level"] != "HIGH":
+    if report["risk"]["score"] != 68 or report["risk"]["level"] != "HIGH":
         raise CheckFailed("Demo risk result does not match the frozen policy.")
     return report
 
@@ -172,17 +165,14 @@ def run_agent_demo(report: dict[str, Any]) -> None:
         raise CheckFailed("Independent report verification did not pass.")
 
     impact = report["impact"]
-    business = report["business_impact"]
     risk = report["risk"]
     print("\n--- TRUEFORGE AGENT DEMO ---")
     print("TrueForge sandbox verification: PASSED")
     print("\nAgent:")
     print(f'"I found {impact["total_rows"]} total affected records.')
     print(f'Risk = {risk["level"]}.\n')
-    print(
-        f'{business["active_subscriptions"]} active subscriptions would be affected.'
-    )
-    print(f'${business["mrr_at_risk"]:,.0f} MRR is at risk.\n')
+    print(f'{impact["direct_rows"]} target rows match the DELETE condition.')
+    print(f'{impact["dependent_rows"]} dependent rows are connected by foreign keys.\n')
     print('I recommend rejecting this operation."')
     print("\nNext direct tool call: blastshield_request_execution(analysis_id)")
     print("Expected TrueForge checkpoint: Tool requires approval [DENY] [ALLOW]")

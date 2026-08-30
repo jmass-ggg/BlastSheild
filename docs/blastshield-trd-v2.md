@@ -1,5 +1,8 @@
 # BlastShield — TRD v2 (Revised Scope)
 
+> Archived scope document. The implemented generic MVP reports database row and
+> FK impact only; it does not calculate subscription or revenue exposure.
+
 **Product:** BlastShield — consequence-aware execution for AI agents with database access
 **Version:** 2.0 · supersedes v1.0
 **Window:** 4 days

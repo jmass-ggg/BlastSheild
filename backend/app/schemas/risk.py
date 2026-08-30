@@ -10,7 +10,6 @@ class RiskBreakdown(BaseModel):
     direct_impact: int
     dependent_impact: int
     cascade: int
-    business_impact: int
     recoverability: int
 
 
@@ -19,4 +18,3 @@ class RiskReport(BaseModel):
     level: RiskLevel
     breakdown: RiskBreakdown
     reasons: list[str]
-

@@ -1,5 +1,9 @@
 # BlastShield — Developer 1: Backend + System
 
+> Historical implementation brief. The current generic MVP intentionally omits
+> subscription, MRR, ARR, and other application-specific business-impact logic.
+> See `README.md` for the implemented contract.
+
 ## Role
 
 You are the Backend/System engineer working on a two-developer, four-day hackathon project called BlastShield. Another developer is simultaneously building the frontend. Your responsibility is the entire BlastShield execution and analysis system. You must stay strictly inside your ownership boundary.

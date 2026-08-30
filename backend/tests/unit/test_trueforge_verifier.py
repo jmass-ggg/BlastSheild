@@ -30,21 +30,15 @@ def demo_report() -> dict:
             {"rows": 20},
             {"rows": 100},
         ],
-        "business_impact": {
-            "active_subscriptions": 14,
-            "mrr_at_risk": 406.0,
-            "arr_at_risk": 4872.0,
-        },
         "risk": {
-            "score": 60,
+            "score": 68,
             "level": "HIGH",
             "breakdown": {
                 "operation": 20,
                 "direct_impact": 8,
                 "dependent_impact": 12,
-                "cascade": 12,
-                "business_impact": 6,
-                "recoverability": 2,
+                "cascade": 18,
+                "recoverability": 10,
             },
         },
     }
@@ -81,4 +75,3 @@ def test_trueforge_verifier_rejects_inconsistent_report(tmp_path: Path) -> None:
     result = json.loads(completed.stdout)
     assert result["verification"] == "FAILED"
     assert "total_rows does not equal" in " ".join(result["failures"])
-

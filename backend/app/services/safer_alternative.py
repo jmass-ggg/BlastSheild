@@ -2,7 +2,6 @@ from sqlglot import exp
 
 from app.schemas.analysis import SaferAlternative
 from app.schemas.graph import TableMetadata
-from app.schemas.impact import BusinessImpact
 from app.services.risk_engine import calculate_risk
 from app.services.sql_parser import ParsedSQL
 
@@ -37,7 +36,6 @@ def generate_safer_alternative(
         operation="UPDATE",
         direct_rows=direct_rows,
         dependencies=[],
-        business_impact=BusinessImpact(),
         has_where=parsed.has_where,
         recoverable=True,
     )

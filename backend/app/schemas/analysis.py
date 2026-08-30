@@ -3,7 +3,7 @@ import uuid
 from pydantic import BaseModel, Field
 
 from app.schemas.graph import ReportGraph
-from app.schemas.impact import BusinessImpact, DependencyImpact, ImpactSummary
+from app.schemas.impact import DependencyImpact, ImpactSummary
 from app.schemas.risk import RiskLevel, RiskReport
 
 
@@ -39,7 +39,6 @@ class AnalysisResponse(BaseModel):
     action: ActionReport
     impact: ImpactSummary
     dependencies: list[DependencyImpact]
-    business_impact: BusinessImpact
     risk: RiskReport
     graph: ReportGraph
     safer_alternative: SaferAlternative

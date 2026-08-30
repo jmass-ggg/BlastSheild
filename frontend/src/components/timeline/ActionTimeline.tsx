@@ -24,7 +24,7 @@ const STAGED_ANALYSIS_STEPS = [
   { key: 'parsed', label: 'AST parsed & target table detected', delay: 250 },
   { key: 'graph', label: 'Foreign-key dependency graph traversed', delay: 450 },
   { key: 'impact', label: 'Blast radius & cascade rows measured', delay: 700 },
-  { key: 'business', label: 'Business revenue impact calculated', delay: 900 },
+  { key: 'risk', label: 'Deterministic risk factors scored', delay: 900 },
   { key: 'alternative', label: 'Safer alternative synthesized', delay: 1100 },
 ];
 
@@ -101,12 +101,18 @@ export const ActionTimeline: React.FC<ActionTimelineProps> = ({
   }
 
   // After analysis completes: show backend authoritative timeline
-  const items: Array<{ key: string; label: string; status: 'complete' | 'current' | 'pending' | 'rejected' }> =
+  type RenderTimelineItem = {
+    key: string;
+    label: string;
+    status: 'complete' | 'current' | 'pending' | 'rejected';
+  };
+
+  const sourceItems: RenderTimelineItem[] =
     timeline && timeline.length > 0
       ? timeline.map((item) => ({
           key: item.key,
           label: item.label,
-          status: item.status as any,
+          status: item.status as RenderTimelineItem['status'],
         }))
       : [
           { key: 'intercepted', label: 'SQL intercepted', status: 'complete' },
@@ -115,40 +121,59 @@ export const ActionTimeline: React.FC<ActionTimelineProps> = ({
           { key: 'approval', label: 'Waiting for human approval', status: 'current' },
         ];
 
+  // Persisted reports may already include status-specific steps. Normalize by
+  // key before applying the live status so React identity stays deterministic.
+  let items = sourceItems.filter(
+    (item, index, allItems) =>
+      allItems.findIndex((candidate) => candidate.key === item.key) === index
+  );
+
+  const upsertItem = (nextItem: RenderTimelineItem) => {
+    const index = items.findIndex((item) => item.key === nextItem.key);
+    if (index >= 0) {
+      items[index] = nextItem;
+    } else {
+      items.push(nextItem);
+    }
+  };
+
   // If status indicates transition
   if (status === 'APPROVED') {
-    items[items.length - 1] = {
+    upsertItem({
       key: 'approval',
       label: 'Approved by human operator',
       status: 'complete',
-    };
-    items.push({
+    });
+    upsertItem({
       key: 'ready_execute',
       label: 'Ready for execution & revalidation',
       status: 'current',
     });
   } else if (status === 'EXECUTED') {
-    items[items.length - 1] = {
+    upsertItem({
       key: 'approval',
       label: 'Approved by human operator',
       status: 'complete',
-    };
+    });
+    items = items.filter(
+      (item) => !['ready_execute', 'revalidated', 'execution', 'executed'].includes(item.key)
+    );
     items.push({
       key: 'revalidated',
       label: 'Revalidated against live database',
       status: 'complete',
     });
     items.push({
-      key: 'executed',
+      key: 'execution',
       label: 'Executed in isolated transaction',
       status: 'complete',
     });
   } else if (status === 'REJECTED') {
-    items[items.length - 1] = {
+    upsertItem({
       key: 'approval',
       label: 'Human operator rejected action',
       status: 'rejected',
-    };
+    });
   }
 
   return (

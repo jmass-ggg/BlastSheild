@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import math
 import sys
 from pathlib import Path
 from typing import Any
@@ -41,7 +40,6 @@ def object_at(report: dict[str, Any], key: str, failures: list[str]) -> dict[str
 def verify(report: dict[str, Any]) -> dict[str, Any]:
     failures: list[str] = []
     impact = object_at(report, "impact", failures)
-    business = object_at(report, "business_impact", failures)
     risk = object_at(report, "risk", failures)
     breakdown = object_at(risk, "breakdown", failures)
     dependencies = report.get("dependencies")
@@ -68,16 +66,6 @@ def verify(report: dict[str, Any]) -> dict[str, Any]:
         failures.append("total_rows does not equal direct_rows + dependent_rows")
     if dependent != dependency_sum:
         failures.append("dependent_rows does not equal the dependency row sum")
-
-    mrr = number(business.get("mrr_at_risk"), "business_impact.mrr_at_risk", failures)
-    arr = number(business.get("arr_at_risk"), "business_impact.arr_at_risk", failures)
-    active_subscriptions = number(
-        business.get("active_subscriptions"),
-        "business_impact.active_subscriptions",
-        failures,
-    )
-    if not math.isclose(arr, mrr * 12, abs_tol=0.01):
-        failures.append("ARR does not equal MRR multiplied by 12")
 
     score = number(risk.get("score"), "risk.score", failures)
     breakdown_sum = sum(
@@ -108,9 +96,6 @@ def verify(report: dict[str, Any]) -> dict[str, Any]:
         "checks": {
             "total_rows": int(total),
             "dependency_sum": int(dependency_sum),
-            "active_subscriptions": int(active_subscriptions),
-            "mrr_at_risk": mrr,
-            "arr_at_risk": arr,
             "risk_breakdown_sum": int(breakdown_sum),
             "risk_score": int(score),
             "risk_level": level,
@@ -141,4 +126,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
-

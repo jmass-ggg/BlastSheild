@@ -47,7 +47,7 @@ export const DATABASE_SCHEMA: Record<string, TableSchema> = {
   subscriptions: {
     name: 'subscriptions',
     rowCount: 50,
-    description: 'Recurring billing contracts — drives the MRR/ARR at risk figure',
+    description: 'User subscription records linked through a cascading foreign key',
     parentTable: 'users',
     columns: [
       { name: 'id', type: 'BIGSERIAL', isPk: true },

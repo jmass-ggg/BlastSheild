@@ -78,29 +78,3 @@ def build_correlated_count_query(
 ) -> str:
     query = _path_query(parsed, path, graph, [exp.func("COUNT", exp.Star())])
     return query.sql(dialect="postgres", pretty=False)
-
-
-def build_business_impact_query(
-    parsed: ParsedSQL,
-    path: DependencyPath,
-    graph: ForeignKeyGraph,
-    *,
-    status_column: str,
-    active_value: str,
-    price_column: str,
-) -> str:
-    final_alias = f"t{len(path.tables) - 1}"
-    active_count = exp.alias_(exp.func("COUNT", exp.Star()), "active_subscriptions")
-    price_sum = exp.alias_(
-        exp.func(
-            "COALESCE",
-            exp.func("SUM", exp.column(price_column, table=final_alias)),
-            exp.Literal.number(0),
-        ),
-        "mrr_at_risk",
-    )
-    query = _path_query(parsed, path, graph, [active_count, price_sum])
-    query = query.where(
-        exp.column(status_column, table=final_alias).eq(exp.Literal.string(active_value))
-    )
-    return query.sql(dialect="postgres", pretty=False)

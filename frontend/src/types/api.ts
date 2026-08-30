@@ -43,18 +43,11 @@ export interface DependencyImpact {
   measurement: Measurement;
 }
 
-export interface BusinessImpact {
-  active_subscriptions: number;
-  mrr_at_risk: number;
-  arr_at_risk: number;
-}
-
 export interface RiskBreakdown {
   operation: number;
   direct_impact: number;
   dependent_impact: number;
   cascade: number;
-  business_impact: number;
   recoverability: number;
 }
 
@@ -104,7 +97,6 @@ export interface AnalysisResponse {
   action: ActionReport;
   impact: ImpactSummary;
   dependencies: DependencyImpact[];
-  business_impact: BusinessImpact;
   risk: RiskReport;
   graph: ReportGraph;
   safer_alternative: SaferAlternative;
