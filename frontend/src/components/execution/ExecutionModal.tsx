@@ -65,12 +65,18 @@ export const ExecutionModal: React.FC<ExecutionModalProps> = ({
     }
   }, [open, view.analysisId]);
 
-  // If the active analysis changes while the modal is open, immediately close to protect against target swap
+  // If the active analysis changes while the modal is open and not mid-execution,
+  // close the modal to prevent approving or executing a different target.
   useEffect(() => {
-    if (open && targetAnalysisIdRef.current && view.analysisId !== targetAnalysisIdRef.current) {
+    if (
+      open &&
+      phase !== 'running' &&
+      targetAnalysisIdRef.current &&
+      view.analysisId !== targetAnalysisIdRef.current
+    ) {
       onClose();
     }
-  }, [open, view.analysisId, onClose]);
+  }, [open, phase, view.analysisId, onClose]);
 
   useEffect(() => {
     if (!open) return;

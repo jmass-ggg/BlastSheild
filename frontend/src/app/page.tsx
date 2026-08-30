@@ -91,6 +91,42 @@ export default function Home() {
     let cancelled = false;
     let pollSeq = 0;
 
+    const applyStatusUpdate = (latest: AnalysisResponse, reportKey: string) => {
+      const currentView = viewRef.current;
+      if (!currentView) return false;
+      const terminalStatuses = ['APPROVED', 'EXECUTED', 'REJECTED', 'STALE'];
+      if (terminalStatuses.includes(currentView.status) && latest.status === 'PENDING_APPROVAL') {
+        return true; // suppress downgrade
+      }
+      latestReportKey.current = reportKey;
+      setView((prev) => (prev ? { ...prev, status: latest.status } : null));
+      return true;
+    };
+
+    const queuePendingReport = (latest: AnalysisResponse, reportKey: string) => {
+      // Advance the key so we don't re-process the same report on next tick.
+      latestReportKey.current = reportKey;
+      // Never overwrite a report the user has not yet acted on.
+      setPendingReport((existing) => existing ?? latest);
+      setShowNewReportNotice(true);
+    };
+
+    const loadFreshReport = (latest: AnalysisResponse, reportKey: string) => {
+      latestReportKey.current = reportKey;
+      const adapted = adaptAnalysis(latest, DEFAULT_SQL);
+      setSelectedTable(adapted.targetTable);
+      setView(adapted);
+      setOrigin('TRUEFORGE_MCP');
+      setReceivedAt(new Date());
+      setShowNewReportNotice(true);
+      if (noticeTimerRef.current) window.clearTimeout(noticeTimerRef.current);
+      noticeTimerRef.current = window.setTimeout(() => setShowNewReportNotice(false), 6000);
+      window.setTimeout(
+        () => reportRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
+        50,
+      );
+    };
+
     const syncLatestReport = async () => {
       if (isAnalyzing || isExecuteOpenRef.current || isRejectingRef.current) return;
       const currentSeq = ++pollSeq;
@@ -99,9 +135,9 @@ export default function Home() {
         const latest = reports[0];
         if (cancelled || currentSeq !== pollSeq) return;
 
-        // Reports are persisted across restarts. Treat the newest report at page
-        // load as history so a fresh dashboard does not look pre-populated, while
-        // retaining polling for analyses subsequently created by TrueForge/MCP.
+        // Treat the newest report at page load as history so a fresh dashboard
+        // does not look pre-populated, while retaining polling for analyses
+        // subsequently created by TrueForge/MCP.
         if (!hasEstablishedReportBaseline.current) {
           hasEstablishedReportBaseline.current = true;
           latestReportKey.current = latest
@@ -116,37 +152,17 @@ export default function Home() {
 
         const currentView = viewRef.current;
 
-        // 1. If user is reviewing the SAME analysis, update its lifecycle status safely
         if (currentView && currentView.analysisId === latest.analysis_id) {
-          const terminalStatuses = ['APPROVED', 'EXECUTED', 'REJECTED', 'STALE'];
-          if (terminalStatuses.includes(currentView.status) && latest.status === 'PENDING_APPROVAL') {
-            return;
-          }
-          latestReportKey.current = reportKey;
-          setView((prev) => (prev ? { ...prev, status: latest.status } : null));
+          applyStatusUpdate(latest, reportKey);
           return;
         }
 
-        // 2. If user is currently reviewing another analysis, DO NOT swap view or target table.
-        // Instead, notify user that a new analysis is available to review on demand.
         if (currentView !== null) {
-          latestReportKey.current = reportKey;
-          setPendingReport(latest);
-          setShowNewReportNotice(true);
+          queuePendingReport(latest, reportKey);
           return;
         }
 
-        // 3. If dashboard is empty, load the new incoming analysis
-        latestReportKey.current = reportKey;
-        const adapted = adaptAnalysis(latest, DEFAULT_SQL);
-        setSelectedTable(adapted.targetTable);
-        setView(adapted);
-        setOrigin('TRUEFORGE_MCP');
-        setReceivedAt(new Date());
-        setShowNewReportNotice(true);
-        if (noticeTimerRef.current) window.clearTimeout(noticeTimerRef.current);
-        noticeTimerRef.current = window.setTimeout(() => setShowNewReportNotice(false), 6000);
-        window.setTimeout(() => reportRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+        loadFreshReport(latest, reportKey);
       } catch {
         // The prompt owns user-facing connection errors. Background sync is best effort.
       }
