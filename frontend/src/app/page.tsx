@@ -76,6 +76,7 @@ export default function Home() {
     };
   }, []);
 
+  const [pendingReport, setPendingReport] = useState<AnalysisResponse | null>(null);
   const isExecuteOpenRef = useRef(isExecuteOpen);
   isExecuteOpenRef.current = isExecuteOpen;
   const isRejectingRef = useRef(isRejecting);
@@ -112,12 +113,11 @@ export default function Home() {
         const reportKey = `${latest.analysis_id}:${latest.status}`;
         if (latestReportKey.current === reportKey) return;
 
-        // If the user has the modal open or is actively reviewing an analysis,
-        // do not swap the execution target out from under them.
         const currentView = viewRef.current;
+
+        // 1. If user is reviewing the SAME analysis, update its lifecycle status safely
         if (currentView && currentView.analysisId === latest.analysis_id) {
           const terminalStatuses = ['APPROVED', 'EXECUTED', 'REJECTED', 'STALE'];
-          // Prevent out-of-order race from reverting an approved or terminal state back to pending
           if (terminalStatuses.includes(currentView.status) && latest.status === 'PENDING_APPROVAL') {
             return;
           }
@@ -126,11 +126,16 @@ export default function Home() {
           return;
         }
 
-        // If user is actively reviewing a different analysis or running an action, do not swap target
-        if (isExecuteOpenRef.current || isRejectingRef.current) {
+        // 2. If user is currently reviewing another analysis, DO NOT swap view or target table.
+        // Instead, notify user that a new analysis is available to review on demand.
+        if (currentView !== null) {
+          latestReportKey.current = reportKey;
+          setPendingReport(latest);
+          setShowNewReportNotice(true);
           return;
         }
 
+        // 3. If dashboard is empty, load the new incoming analysis
         latestReportKey.current = reportKey;
         const adapted = adaptAnalysis(latest, DEFAULT_SQL);
         setSelectedTable(adapted.targetTable);
@@ -238,16 +243,40 @@ export default function Home() {
           >
             <span className="flex items-center gap-2 font-medium">
               <Bot className="h-4 w-4 text-sky-600" />
-              New analysis received from TrueForge through the BlastShield MCP connector.
+              {pendingReport
+                ? `New analysis (${pendingReport.analysis_id.slice(0, 8)}) received from TrueForge.`
+                : 'New analysis received from TrueForge through the BlastShield MCP connector.'}
             </span>
-            <button
-              type="button"
-              onClick={() => setShowNewReportNotice(false)}
-              className="rounded-lg p-1 text-sky-700 hover:bg-sky-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
-              aria-label="Dismiss notification"
-            >
-              <X className="h-4 w-4" />
-            </button>
+            <div className="flex items-center gap-2">
+              {pendingReport && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const adapted = adaptAnalysis(pendingReport, DEFAULT_SQL);
+                    setView(adapted);
+                    setSelectedTable(adapted.targetTable);
+                    setOrigin('TRUEFORGE_MCP');
+                    setReceivedAt(new Date());
+                    setPendingReport(null);
+                    setShowNewReportNotice(false);
+                  }}
+                  className="px-3 py-1 bg-sky-600 hover:bg-sky-700 text-white font-medium text-xs rounded-lg transition-colors cursor-pointer"
+                >
+                  Switch to New Analysis
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => {
+                  setShowNewReportNotice(false);
+                  setPendingReport(null);
+                }}
+                className="rounded-lg p-1 text-sky-700 hover:bg-sky-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 cursor-pointer"
+                aria-label="Dismiss notification"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
           </div>
         )}
 
