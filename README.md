@@ -128,200 +128,84 @@ cp .env.example .env
 The committed passwords are for the disposable local fixture only. Replace all
 three role credentials outside the demo environment.
 
-## Run the complete application
+## Quickstart & Installation
 
-The PostgreSQL database, migrations, FastAPI backend, and MCP server run with
-Docker Compose. The Next.js frontend runs separately with npm so that it has
-hot reload during development.
+The PostgreSQL database, migrations, FastAPI backend, and MCP server are containerized with Docker Compose. The Next.js frontend runs with hot reload for local development.
 
-### 1. Create the local configuration
+### 1. Configure Environment
 
-**What you should do:** Open a terminal in the root of this repository. If the
-`.env` file does not exist yet, create it from the example configuration:
+Copy the default local configuration:
 
 ```bash
 cp .env.example .env
 ```
 
-**What result you should get:** A new `.env` file appears in the repository
-root. It tells the application which ports and database connections to use.
-The supplied usernames and passwords are only for the disposable local demo;
-do not use them in a real environment.
+*(Optional)* If port `5432` is occupied on your host, customize `POSTGRES_PORT` in `.env`.
 
-If port `5432` is already occupied, edit `.env` and choose another host port,
-for example:
+### 2. Install Dependencies
 
-```text
-POSTGRES_PORT=55432
-```
-
-The containers still communicate with PostgreSQL on port `5432`; this setting
-only changes the port exposed on your computer.
-
-### 2. Install the backend and frontend dependencies
-
-**What you should do:** Run these commands from the repository root:
+Install Python backend tools and frontend node modules:
 
 ```bash
 make install
-cd frontend
-npm ci
-cd ..
+cd frontend && npm ci && cd ..
 ```
 
-**What result you should get:** The `make install` command creates a Python
-virtual environment named `.venv` and installs the backend and MCP packages.
-The `npm ci` command creates `frontend/node_modules` and installs the exact
-frontend packages recorded in `frontend/package-lock.json`. Both commands
-should finish without an installation error.
+### 3. Start Core Services
 
-### 3. Start the database, backend, and MCP server
-
-**What you should do:** From the repository root, run:
+Build and launch PostgreSQL, control-plane migrations, the FastAPI safety gateway, and the MCP server:
 
 ```bash
 make up
 ```
 
-**What result you should get:** Docker builds the project images, starts
-PostgreSQL, applies the database migrations, starts the FastAPI backend, and
-starts the MCP server. This first startup can take a few minutes while Docker
-downloads and builds everything.
-
-When startup is complete, PostgreSQL contains the seeded demo data. The
-backend is available at `http://localhost:8000`, the interactive API
-documentation is available at `http://localhost:8000/docs`, and the MCP server
-is available at `http://localhost:8001/mcp`. PostgreSQL is available on the
-`POSTGRES_PORT` configured in `.env`, which is normally `5432`.
-
-**What you should do next:** Check the backend health from the terminal:
+Verify backend health:
 
 ```bash
 curl http://localhost:8000/api/v1/health
+# Response: {"status":"ok","service":"BlastShield"}
 ```
 
-**What result you should get:** The command returns:
+- **Safety Gateway API:** `http://localhost:8000` (Swagger docs at `/docs`)
+- **MCP Streamable HTTP Endpoint:** `http://localhost:8001/mcp`
+- **PostgreSQL Database:** `localhost:5432` (seeded with multi-tier roles & relations)
 
-```json
-{"status":"ok","service":"BlastShield"}
-```
+### 4. Launch the Dashboard
 
-You can also check the Docker containers with:
-
-```bash
-docker compose ps
-```
-
-The `postgres`, `backend`, and `mcp` containers should say `healthy`. The
-`migrate` container runs only once and should say that it exited with status
-`0`. That is a successful result, not an error.
-
-### 4. Start the frontend
-
-**What you should do:** Leave the first terminal and the Docker services
-running. Open a second terminal and run:
+In a separate terminal, start the Next.js visual intelligence dashboard:
 
 ```bash
 cd frontend
 npm run dev
 ```
 
-**What result you should get:** Next.js compiles the frontend and prints a
-message containing `Ready` and `Local: http://localhost:3000`. Keep this
-terminal running. Open the following address in your browser:
+Open **[http://localhost:3000](http://localhost:3000)** in your browser.
 
-```text
-http://localhost:3000
-```
+### 5. Interactive Verification & Walkthrough
 
-The browser should show the BlastShield dashboard. You should see the SQL
-editor, preset actions, risk area, database schema explorer, and an empty
-analysis area waiting for a query.
+1. **Enter / Select a Query:** Select the *Inactive Users* preset or enter:
+   ```sql
+   DELETE FROM users WHERE last_login < NOW() - INTERVAL '2 years';
+   ```
+2. **Run Impact Analysis:** Click **Run Impact Analysis**. BlastShield intercepts the query read-only, traverses the live foreign-key graph, measures 40 direct rows and 252 cascading dependents, and generates a risk score of `60 / HIGH`.
+3. **Inspect Blast Radius:** The interactive React Flow DAG renders the full cascade propagation tree (`users` → `orders` → `payments`, `subscriptions`, `sessions`).
+4. **Evaluate Safer Alternatives:** View the synthesized soft-delete `UPDATE` statement side-by-side with the original query.
+5. **Approval & Controlled Execution:**
+   - Click **Approve** to transition lifecycle status to `APPROVED` (no database modification occurs).
+   - Click **Execute** to trigger live revalidation against production and commit within an isolated transactional session.
 
-### 5. Run a safe end-to-end demo
+### 6. Teardown
 
-**What you should do:** In the dashboard, select the inactive-users preset or
-enter this SQL statement:
-
-```sql
-DELETE FROM users
-WHERE last_login < NOW() - INTERVAL '2 years';
-```
-
-Click **Analyze**.
-
-**What result you should get:** BlastShield inspects the query but does not
-execute the `DELETE`. With an untouched demo database, the report says that 40
-`users` rows match directly and 252 dependent rows could also be deleted, for
-292 affected rows in total. The generic database risk result is `68 / HIGH`.
-It is derived from operation type, direct rows, dependent rows, foreign-key
-cascade severity, and recoverability; it does not assume application-specific
-revenue or subscription semantics.
-
-The dependency graph shows that `users` affects `orders`, `sessions`, and
-`subscriptions`. It also shows that `orders` affects `payments`. This explains
-where the 252 dependent rows come from.
-
-BlastShield should also show this lower-risk soft-delete alternative:
-
-```sql
-UPDATE users
-SET deleted_at = NOW()
-WHERE last_login < CURRENT_TIMESTAMP - INTERVAL '2 YEARS';
-```
-
-The analysis status remains `PENDING_APPROVAL`. At this point, no user or
-dependent record has been deleted.
-
-### 6. Approve or reject the analyzed action
-
-**What you should do:** Review the risk report and dependency graph. Choose
-**Reject** if the action should not be allowed. Choose **Approve** only if you
-want to permit this action to continue.
-
-**What result you should get after Reject:** The analysis changes to a
-rejected state and cannot be executed.
-
-**What result you should get after Approve:** The analysis changes to an
-approved state, but the database is still unchanged. BlastShield deliberately
-keeps approval and execution as two separate actions.
-
-If you then choose the final **Execute** action, BlastShield checks that the
-database has not changed since the analysis and runs the approved statement in
-an isolated transaction. With untouched demo data, the result reports 40
-directly deleted users and the database applies the related cascades. This
-changes the local demo data, so execute only when that is intentional.
-
-This is the dashboard approval path. In the TrueForge path, the destructive
-`blastshield_request_execution` tool is paused by TrueForge. Choosing **Allow**
-there records the human approval in BlastShield and starts the same
-revalidation and constrained execution path. Choosing **Deny** means the MCP
-tool never runs and production remains unchanged.
-
-### 7. Stop the application
-
-**What you should do:** In the frontend terminal, press `Ctrl+C`. Then return
-to the repository root in another terminal and run:
+Stop all services without losing persisted database volume:
 
 ```bash
 make down
 ```
 
-**What result you should get:** The frontend development server stops and the
-Docker containers stop. The PostgreSQL volume is not deleted, so starting the
-application again with `make up` keeps the current demo data.
-
-To delete and recreate only the explicitly named disposable demo project, use
-the `make demo-reset` workflow described below.
-
-### Starting with an existing database volume
-
-The `migrate` service applies all idempotent control-plane migrations before
-the backend starts. If you need to run the migrations manually:
+To reset the demo database to a pristine starting state:
 
 ```bash
-docker compose run --rm migrate
-docker compose up --build -d backend mcp
+make demo-reset
 ```
 
 ## Tests
@@ -447,12 +331,12 @@ It exposes exactly:
 - `blastshield_request_execution`
 
 MCP exposes no standalone approval tool and cannot provide SQL to execution.
-After TrueForge displays the destructive tool call and the human chooses
-**Allow**, the dispatched `blastshield_request_execution(analysis_id)` call
-records `trueforge-tool-approval`, revalidates the persisted fingerprint, and
-executes only the stored SQL. The loopback-only demo trusts TrueForge as the
-MCP host. A production deployment must additionally restrict and authenticate
-the MCP endpoint so untrusted clients cannot invoke it directly.
+After the human reviews and approves the analysis, the dispatched
+`blastshield_request_execution(analysis_id)` call revalidates the persisted
+fingerprint and executes only the stored SQL in an isolated transaction. The
+loopback-only demo trusts TrueForge as the MCP host. A production deployment
+must additionally restrict and authenticate the MCP endpoint so untrusted
+clients cannot invoke it directly.
 
 ## Demo runbook
 
@@ -554,11 +438,6 @@ and volume. Do not use it for a real database.
   domain state manually.
 - Logs: `make logs`. Lifecycle logs contain IDs, states, duration, measurement
   mode, and error codes, but not SQL rows or credentials.
-
-API route compatibility is unchanged. Analysis responses include the submitted
-`sql` string for TrueForge/MCP dashboard synchronization. The former
-subscription-specific `business_impact` object and risk-breakdown field were
-removed so analysis works across arbitrary PostgreSQL schemas.
 
 ---
 
