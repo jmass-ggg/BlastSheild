@@ -95,101 +95,6 @@ condition]`. SQLGlot parsing rejects multiple statements and unsupported SQL.
 Schema metadata, foreign keys, correlated row counts, risk, and
 safer alternatives are calculated from the live database.
 
-## Hackathon presentation script
-
-The following script is designed for a three-to-four-minute project
-explanation followed by the live demo.
-
-> Hello everyone. Our project is called **BlastShield**.
->
-> AI agents can now generate and execute database queries. That is powerful,
-> but it is also dangerous. An AI agent can generate a perfectly valid SQL
-> statement that causes serious production damage.
->
-> For example, consider this request: *Delete users who have been inactive for
-> more than two years.* The generated SQL looks simple:
->
-> ```sql
-> DELETE FROM users
-> WHERE last_login < NOW() - INTERVAL '2 years';
-> ```
->
-> However, those users may be connected to orders, sessions, subscriptions,
-> payments, or other records through foreign keys. A single DELETE can silently
-> trigger a much larger cascade.
->
-> BlastShield solves this problem by acting as a safety gateway between an AI
-> agent and PostgreSQL. The AI can propose a destructive operation, but it does
-> not receive unrestricted database access.
->
-> The flow starts in **TrueForge**. The user describes the requested operation
-> in natural language, and the TrueForge agent calls the BlastShield MCP tool
-> `blastshield_analyze` with the proposed SQL.
->
-> BlastShield parses the statement, rejects unsupported or multiple statements,
-> and then uses a read-only database role to inspect the live PostgreSQL schema
-> and data. It measures the directly matching rows, follows foreign-key
-> relationships, detects `ON DELETE CASCADE` paths, and counts the dependent
-> rows that could be affected.
->
-> BlastShield then applies a deterministic risk policy based on the operation,
-> direct impact, dependent impact, cascade severity, and recoverability. The
-> same SQL and database state produce the same result; the risk score is not an
-> AI guess.
->
-> In our demo, BlastShield finds 40 directly matching users and 252 dependent
-> rows, giving 292 potentially affected rows in total. The result is a risk
-> score of 68 out of 100, classified as **HIGH**.
->
-> Nothing has been deleted. The analysis is stored as `PENDING_APPROVAL`, and
-> the BlastShield dashboard automatically displays the report created through
-> TrueForge. The dashboard shows the SQL, affected-row counts, risk factors,
-> lifecycle state, and an interactive dependency graph:
->
-> ```text
-> users
-> ├── orders
-> │   └── payments
-> ├── sessions
-> └── subscriptions
-> ```
->
-> BlastShield also proposes a lower-risk soft-delete alternative when the
-> target table supports it. This is presented as a recommendation, not a
-> guarantee, because database triggers and application-level behavior may
-> require additional review.
->
-> Next, the agent attempts to call `blastshield_request_execution`. TrueForge
-> stops before invoking this destructive tool and shows the human **Deny** or
-> **Allow** approval checkpoint.
->
-> If the human denies the tool call, production remains unchanged. If the
-> human allows it, BlastShield records the approval, revalidates the stored
-> analysis against the current database state, and permits only the exact SQL
-> that was analyzed. If the data or schema changed, BlastShield stops the
-> operation as stale. Otherwise, the constrained executor runs it in an
-> isolated transaction through a restricted database role.
->
-> The security model separates responsibilities. The analyzer can read domain
-> data but cannot write. The application role manages reports and lifecycle
-> state but cannot read domain tables. The executor can perform the approved
-> operation but cannot access the control plane. TrueForge and MCP have no
-> database credentials.
->
-> In short: **TrueForge orchestrates the AI agent and human tool approval,
-> BlastShield provides production-aware deterministic analysis and
-> revalidation, the dashboard explains the blast radius, and the constrained
-> executor runs only the approved operation.**
->
-> BlastShield lets AI agents work with production databases without giving
-> them unrestricted destructive power. The AI proposes, BlastShield measures,
-> the human decides, and the executor remains constrained.
-
-For the safest live presentation, choose **Deny** at the TrueForge checkpoint.
-This demonstrates the complete analysis and approval flow while leaving all
-demo rows unchanged. Use **Allow** only when intentionally demonstrating the
-executor, because it commits the stored DELETE after successful revalidation.
-
 ## Prerequisites
 
 - Python 3.12+
@@ -659,9 +564,8 @@ removed so analysis works across arbitrary PostgreSQL schemas.
 
 ## Qodo Code Review Evidence
 
-> **Required by the [TrueForge hackathon](https://www.wemakedevs.org/hackathons/trueforge).**
-> Every substantive merge runs through a Qodo-reviewed pull request before
-> landing on `main`. Direct pushes to `main` are not counted as reviewed work.
+Every substantive merge runs through a Qodo-reviewed pull request before
+landing on `main`. Direct pushes to `main` are not counted as reviewed work.
 
 ### How we use Qodo
 
@@ -708,7 +612,7 @@ removed so analysis works across arbitrary PostgreSQL schemas.
 git checkout -b feat/your-feature
 # ... make changes ...
 git commit -m "feat: your feature"
-git push binato feat/your-feature
+git push origin feat/your-feature
 
 # 2. Open a PR on GitHub — Qodo reviews automatically within ~60 seconds.
 #    Or trigger on demand by commenting on any open PR:
